@@ -17,50 +17,34 @@ contract NonTransferableToken is ERC20, ERC20Permit, ERC20VotesComp, Initializab
         ERC20Permit("NonTransferableToken")
     {}
 
-    function initialize(address canMintAndBurn_) public virtual initializer {
+    function initialize(address canMintAndBurn_) public initializer {
         canMintAndBurn = canMintAndBurn_;
     }
 
-    function _afterTokenTransfer(address from, address to, uint256 amount)
-        internal
-        override(ERC20, ERC20Votes)
-    {
+    function _afterTokenTransfer(address from, address to, uint256 amount) internal override(ERC20, ERC20Votes) {
         super._afterTokenTransfer(from, to, amount);
     }
 
-    function _beforeTokenTransfer(address from, address to, uint256 amount)
-        internal
-        override(ERC20)
-    {
+    function _beforeTokenTransfer(address from, address to, uint256 amount) internal override(ERC20) {
         require(from == address(0) || to == address(0), "NonTransferableToken::_beforeTokenTransfer: NonTransferableToken is non-transferable");
         super._beforeTokenTransfer(from, to, amount);
     }
 
-    function mint(address to, uint256 amount)
-        external
-    {
+    function mint(address to, uint256 amount) external {
         require(msg.sender == canMintAndBurn, "NonTransferableToken::mint: Only governor address can mint tokens");
         _mint(to, amount);
     }
 
-    function burn(address account, uint256 amount)
-        external
-    {
+    function burn(address account, uint256 amount) external {
         require(msg.sender == canMintAndBurn, "NonTransferableToken::burn: Only governor address can burn tokens");
         _burn(account, amount);
     }
 
-    function _mint(address to, uint256 amount)
-        internal
-        override(ERC20, ERC20Votes)
-    {
+    function _mint(address to, uint256 amount) internal override(ERC20, ERC20Votes) {
         super._mint(to, amount);
     }
 
-    function _burn(address account, uint256 amount)
-        internal
-        override(ERC20, ERC20Votes)
-    {
+    function _burn(address account, uint256 amount) internal override(ERC20, ERC20Votes) {
         super._burn(account, amount);
     }
 }
