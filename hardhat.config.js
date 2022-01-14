@@ -22,7 +22,7 @@ module.exports = {
     overrides: {
       "contracts/GovernorAlpha.sol": { version: "0.5.16" },
       "contracts/Timelock.sol": { version: "0.5.16" },
-      "contracts/GuardedGovernorAlpha.sol": { version: "0.5.16" },
+      "contracts/GovernorBeta.sol": { version: "0.5.16" },
       "contracts/WrappedReputationToken.sol": { version: "0.8.2" },
       "contracts/NonTransferableToken.sol": { version: "0.8.2" },
       "contracts/test/ReputationTokenMock.sol": { version: "0.8.2" },

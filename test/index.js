@@ -48,7 +48,7 @@ describe("augur dao", () => {
     // 2. deploy govalpha with timelock set to timelock address and guardian set to uploader address.
     // 3. call timelock queueTransaction(setPendingAdmin), executeTransaction(setPendingAdmin), then govalpha.__acceptAdmin() from the uploader address. timelock admin is now govalpha.
     // 4a. for the guardian dao, call govalpha __abdicate() to set the guardian address to 0.
-    // 4b. for the augur dao, call the new function (on GuardedGovernorAlpha) changeGuardian(guardianDaoTimelockAddress) to set the guardian address to the guardian dao timelock's address.
+    // 4b. for the augur dao, call the new function (on GovernorBeta) changeGuardian(guardianDaoTimelockAddress) to set the guardian address to the guardian dao timelock's address.
 
     const Timelock = await ethers.getContractFactory("Timelock");
     guardianDaoTimelockContract = await Timelock.deploy(uploader, timelockDelay);
@@ -85,8 +85,8 @@ describe("augur dao", () => {
 
     augurDaoTimelockContract = await Timelock.deploy(uploader, timelockDelay);
     await augurDaoTimelockContract.deployed();
-    const GuardedGovernorAlpha = await ethers.getContractFactory("GuardedGovernorAlpha");
-    augurDaoContract = await GuardedGovernorAlpha.deploy(augurDaoTimelockContract.address, wrappedReputationTokenContract.address, uploader, nonTransferableTokenContract.address);
+    const GovernorBeta = await ethers.getContractFactory("GovernorBeta");
+    augurDaoContract = await GovernorBeta.deploy(augurDaoTimelockContract.address, wrappedReputationTokenContract.address, uploader, nonTransferableTokenContract.address);
     await augurDaoContract.deployed();
     assert.equal(await augurDaoContract.guardian(), uploader);
     assert.equal(await augurDaoContract.timelock(), augurDaoTimelockContract.address);
@@ -433,7 +433,7 @@ describe("augur dao", () => {
     const newGovernanceTokenAddress = "0x00000000000000000000000000000000DeaDBeef";
     await expect(
       augurDaoContract.changeGovernanceToken(newGovernanceTokenAddress)
-    ).to.be.revertedWith("GuardedGovernorAlpha::changeGovernanceToken: The governance token can only be changed by the guardian");
+    ).to.be.revertedWith("GovernorBeta::changeGovernanceToken: The governance token can only be changed by the guardian");
     assert((await nonTransferableTokenContract.balanceOf(signers[1].address)).gt(await guardianDaoContract.proposalThreshold()));
     await guardianDaoContract.connect(signers[1]).propose(
       [augurDaoContract.address],

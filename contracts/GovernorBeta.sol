@@ -3,9 +3,9 @@ pragma experimental ABIEncoderV2;
 
 import "./GovernorAlpha.sol";
 
-contract GuardedGovernorAlpha is GovernorAlpha {
+contract GovernorBeta is GovernorAlpha {
 
-    string public constant name = "Guarded Governor Alpha";
+    string public constant name = "Governor Beta";
 
     INonTransferableToken public guardianDaoGovernanceToken;
 
@@ -21,13 +21,13 @@ contract GuardedGovernorAlpha is GovernorAlpha {
     }
 
     function changeGuardian(address newGuardian) public {
-        require(msg.sender == guardian, "GuardedGovernorAlpha::changeGuardian: Guardian can only be changed by the guardian");
+        require(msg.sender == guardian, "GovernorBeta::changeGuardian: Guardian can only be changed by the guardian");
         guardian = newGuardian;
     }
 
     // Guardian dao can change the governance token for this dao (e.g. in case of an augur fork)
     function changeGovernanceToken(address newGovernanceToken) public {
-        require(msg.sender == guardian, "GuardedGovernorAlpha::changeGovernanceToken: The governance token can only be changed by the guardian");
+        require(msg.sender == guardian, "GovernorBeta::changeGovernanceToken: The governance token can only be changed by the guardian");
         comp = CompInterface(newGovernanceToken);
     }
 
