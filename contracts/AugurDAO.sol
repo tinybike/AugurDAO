@@ -7,13 +7,13 @@ contract AugurDAO is GovernorAlpha {
 
     string public constant name = "Augur DAO";
 
-    INonTransferableToken public guardianDaoGovernanceToken;
+    INonTransferableToken public guardianGovernanceToken;
 
-    constructor(address timelock_, address comp_, address guardian_, address guardianDaoGovernanceToken_)
+    constructor(address timelock_, address comp_, address guardian_, address guardianGovernanceToken_)
         GovernorAlpha(timelock_, comp_, guardian_)
         public
     {
-        guardianDaoGovernanceToken = INonTransferableToken(guardianDaoGovernanceToken_);
+        guardianGovernanceToken = INonTransferableToken(guardianGovernanceToken_);
     }
 
     function votingPeriod() public pure returns (uint) {
@@ -33,12 +33,12 @@ contract AugurDAO is GovernorAlpha {
 
     // This dao can mint governance tokens for guardian dao
     function mintGuardianGovernanceToken(address to, uint256 amount) public {
-        guardianDaoGovernanceToken.mint(to, amount);
+        guardianGovernanceToken.mint(to, amount);
     }
 
     // This dao can burn governance tokens for guardian dao
     function burnGuardianGovernanceToken(address account, uint256 amount) public {
-        guardianDaoGovernanceToken.burn(account, amount);
+        guardianGovernanceToken.burn(account, amount);
     }
 }
 

@@ -91,7 +91,7 @@ describe("augur dao", () => {
     assert.equal(await augurDaoContract.guardian(), uploader);
     assert.equal(await augurDaoContract.timelock(), augurDaoTimelockContract.address);
     assert.equal(await augurDaoContract.comp(), wrappedReputationTokenContract.address);
-    assert.equal(await augurDaoContract.guardianDaoGovernanceToken(), nonTransferableTokenContract.address);
+    assert.equal(await augurDaoContract.guardianGovernanceToken(), nonTransferableTokenContract.address);
     blockNumber = await ethers.provider.getBlockNumber();
     blockTimestamp = (await ethers.provider.getBlock(blockNumber)).timestamp;
     eta = blockTimestamp + timelockDelay + 1;
