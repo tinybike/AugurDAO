@@ -3,7 +3,7 @@ const { assert, expect } = require("chai");
 describe("augur dao", () => {
   let signers;
   let uploader;
-  let repv2WrapperContract;
+  let wrappedReputationTokenContract;
   let augurDaoTimelockContract;
   let guardianDaoTimelockContract;
   let guardianDaoContract;
@@ -13,29 +13,29 @@ describe("augur dao", () => {
   const timelockDelay = 86400 * 2;
   const zeroAddress = "0x0000000000000000000000000000000000000000";
   const bigOne = ethers.BigNumber.from(10).pow(18);
-  const uploaderRepv2Balance = ethers.BigNumber.from(100000000).mul(bigOne);
-  const initialRepv2Balances = ethers.BigNumber.from(400000).mul(bigOne);
-  const amountOfRepv2ToWrap = ethers.BigNumber.from(300000).mul(bigOne);
+  const uploaderReputationTokenBalance = ethers.BigNumber.from(100000000).mul(bigOne);
+  const initialReputationTokenBalances = ethers.BigNumber.from(400000).mul(bigOne);
+  const amountOfReputationTokenToWrap = ethers.BigNumber.from(300000).mul(bigOne);
 
   const deployContractsAndSetupAccounts = async () => {
     signers = await ethers.getSigners();
     uploader = signers[0].address;
 
     const ReputationTokenMock = await ethers.getContractFactory("ReputationTokenMock");
-    reputationTokenMockContract = await ReputationTokenMock.deploy(uploader, uploaderRepv2Balance);
+    reputationTokenMockContract = await ReputationTokenMock.deploy(uploader, uploaderReputationTokenBalance);
     await reputationTokenMockContract.deployed();
     for (let i = 1; i < signers.length; i++) {
-      await reputationTokenMockContract.transfer(signers[i].address, initialRepv2Balances);
-      assert((await reputationTokenMockContract.balanceOf(signers[i].address)).eq(initialRepv2Balances));
+      await reputationTokenMockContract.transfer(signers[i].address, initialReputationTokenBalances);
+      assert((await reputationTokenMockContract.balanceOf(signers[i].address)).eq(initialReputationTokenBalances));
     }
 
     const WrappedReputationToken = await ethers.getContractFactory("WrappedReputationToken");
-    repv2WrapperContract = await WrappedReputationToken.deploy(reputationTokenMockContract.address);
-    await repv2WrapperContract.deployed();
+    wrappedReputationTokenContract = await WrappedReputationToken.deploy(reputationTokenMockContract.address);
+    await wrappedReputationTokenContract.deployed();
     for (let i = 0; i < signers.length; i++) {
-      await reputationTokenMockContract.connect(signers[i]).approve(repv2WrapperContract.address, amountOfRepv2ToWrap);
-      await repv2WrapperContract.connect(signers[i]).depositFor(signers[i].address, amountOfRepv2ToWrap);
-      assert((await repv2WrapperContract.balanceOf(signers[i].address)).eq(amountOfRepv2ToWrap));
+      await reputationTokenMockContract.connect(signers[i]).approve(wrappedReputationTokenContract.address, amountOfReputationTokenToWrap);
+      await wrappedReputationTokenContract.connect(signers[i]).depositFor(signers[i].address, amountOfReputationTokenToWrap);
+      assert((await wrappedReputationTokenContract.balanceOf(signers[i].address)).eq(amountOfReputationTokenToWrap));
     }
 
     const NonTransferableToken = await ethers.getContractFactory("NonTransferableToken");
@@ -86,11 +86,11 @@ describe("augur dao", () => {
     augurDaoTimelockContract = await Timelock.deploy(uploader, timelockDelay);
     await augurDaoTimelockContract.deployed();
     const GuardedGovernorAlpha = await ethers.getContractFactory("GuardedGovernorAlpha");
-    augurDaoContract = await GuardedGovernorAlpha.deploy(augurDaoTimelockContract.address, repv2WrapperContract.address, uploader, nonTransferableTokenContract.address);
+    augurDaoContract = await GuardedGovernorAlpha.deploy(augurDaoTimelockContract.address, wrappedReputationTokenContract.address, uploader, nonTransferableTokenContract.address);
     await augurDaoContract.deployed();
     assert.equal(await augurDaoContract.guardian(), uploader);
     assert.equal(await augurDaoContract.timelock(), augurDaoTimelockContract.address);
-    assert.equal(await augurDaoContract.comp(), repv2WrapperContract.address);
+    assert.equal(await augurDaoContract.comp(), wrappedReputationTokenContract.address);
     assert.equal(await augurDaoContract.guardianDaoGovernanceToken(), nonTransferableTokenContract.address);
     blockNumber = await ethers.provider.getBlockNumber();
     blockTimestamp = (await ethers.provider.getBlock(blockNumber)).timestamp;
@@ -135,20 +135,20 @@ describe("augur dao", () => {
     uploader = signers[0].address;
 
     const ReputationTokenMock = await ethers.getContractFactory("ReputationTokenMock");
-    reputationTokenMockContract = await ReputationTokenMock.deploy(uploader, uploaderRepv2Balance);
+    reputationTokenMockContract = await ReputationTokenMock.deploy(uploader, uploaderReputationTokenBalance);
     await reputationTokenMockContract.deployed();
 
     const WrappedReputationToken = await ethers.getContractFactory("WrappedReputationToken");
-    repv2WrapperContract = await WrappedReputationToken.deploy(reputationTokenMockContract.address);
-    await repv2WrapperContract.deployed();
+    wrappedReputationTokenContract = await WrappedReputationToken.deploy(reputationTokenMockContract.address);
+    await wrappedReputationTokenContract.deployed();
 
     const initialRepv2Balance = await reputationTokenMockContract.balanceOf(uploader);
-    assert.equal(await repv2WrapperContract.balanceOf(uploader), 0);
-    await reputationTokenMockContract.approve(repv2WrapperContract.address, 10);
-    await repv2WrapperContract.depositFor(uploader, 10);
-    assert.equal(await repv2WrapperContract.balanceOf(uploader), 10);
-    await repv2WrapperContract.withdrawTo(uploader, 4);
-    assert.equal(await repv2WrapperContract.balanceOf(uploader), 6);
+    assert.equal(await wrappedReputationTokenContract.balanceOf(uploader), 0);
+    await reputationTokenMockContract.approve(wrappedReputationTokenContract.address, 10);
+    await wrappedReputationTokenContract.depositFor(uploader, 10);
+    assert.equal(await wrappedReputationTokenContract.balanceOf(uploader), 10);
+    await wrappedReputationTokenContract.withdrawTo(uploader, 4);
+    assert.equal(await wrappedReputationTokenContract.balanceOf(uploader), 6);
     const finalRepv2Balance = await reputationTokenMockContract.balanceOf(uploader);
     assert.equal(initialRepv2Balance.sub(finalRepv2Balance), 6);
   });
@@ -160,16 +160,16 @@ describe("augur dao", () => {
 
     // delegate before the snapshot
     for (let i = 0; i < 4; i++) {
-      assert.equal(await repv2WrapperContract.delegates(signers[i].address), zeroAddress);
-      assert((await repv2WrapperContract.getVotes(signers[i].address)).eq(0));
-      await repv2WrapperContract.connect(signers[i]).delegate(signers[i].address);
-      assert.equal(await repv2WrapperContract.delegates(signers[i].address), signers[i].address);
-      assert((await repv2WrapperContract.getVotes(signers[i].address)).eq(amountOfRepv2ToWrap));
+      assert.equal(await wrappedReputationTokenContract.delegates(signers[i].address), zeroAddress);
+      assert((await wrappedReputationTokenContract.getVotes(signers[i].address)).eq(0));
+      await wrappedReputationTokenContract.connect(signers[i]).delegate(signers[i].address);
+      assert.equal(await wrappedReputationTokenContract.delegates(signers[i].address), signers[i].address);
+      assert((await wrappedReputationTokenContract.getVotes(signers[i].address)).eq(amountOfReputationTokenToWrap));
     }
 
     // signer 0 makes a proposal to mint tokens to signers 1, 2, and 3
     const governanceTokensToMint = ethers.BigNumber.from(300000).mul(bigOne);
-    assert((await repv2WrapperContract.balanceOf(uploader)).gt(await augurDaoContract.proposalThreshold()));
+    assert((await wrappedReputationTokenContract.balanceOf(uploader)).gt(await augurDaoContract.proposalThreshold()));
     await augurDaoContract.propose(
       [augurDaoContract.address, augurDaoContract.address, augurDaoContract.address],
       ["0", "0", "0"],
@@ -197,21 +197,21 @@ describe("augur dao", () => {
     let voteReceipt = await augurDaoContract.getReceipt(proposalId, signers[1].address);
     assert.equal(voteReceipt.hasVoted, true);
     assert.equal(voteReceipt.support, true);
-    assert(voteReceipt.votes.eq(amountOfRepv2ToWrap));
+    assert(voteReceipt.votes.eq(amountOfReputationTokenToWrap));
     proposal = await augurDaoContract.proposals(proposalId);
-    assert(proposal.forVotes.eq(amountOfRepv2ToWrap));
+    assert(proposal.forVotes.eq(amountOfReputationTokenToWrap));
     assert(proposal.againstVotes.eq(0));
     assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Active");
 
     await augurDaoContract.connect(signers[2]).castVote(proposalId, true);
     proposal = await augurDaoContract.proposals(proposalId);
-    assert(proposal.forVotes.eq(amountOfRepv2ToWrap.mul(2)));
+    assert(proposal.forVotes.eq(amountOfReputationTokenToWrap.mul(2)));
     assert(proposal.againstVotes.eq(0));
     assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Active");
 
     await augurDaoContract.connect(signers[3]).castVote(proposalId, true);
     proposal = await augurDaoContract.proposals(proposalId);
-    assert(proposal.forVotes.eq(amountOfRepv2ToWrap.mul(3)));
+    assert(proposal.forVotes.eq(amountOfReputationTokenToWrap.mul(3)));
     assert(proposal.againstVotes.eq(0));
     assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Active");
 
@@ -220,7 +220,7 @@ describe("augur dao", () => {
       await ethers.provider.send("evm_mine");
     }
     proposal = await augurDaoContract.proposals(proposalId);
-    assert(proposal.forVotes.eq(amountOfRepv2ToWrap.mul(3)));
+    assert(proposal.forVotes.eq(amountOfReputationTokenToWrap.mul(3)));
     assert(proposal.againstVotes.eq(0));
     assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Succeeded");
 
@@ -251,7 +251,7 @@ describe("augur dao", () => {
     // signer 0 makes a proposal on augur dao to burn some of the guardian tokens held by signers 1, 2, and 3
     const governanceTokensToBurn = ethers.BigNumber.from(10000).mul(bigOne);
     const governanceTokensRemaining = governanceTokensToMint.sub(governanceTokensToBurn);
-    assert((await repv2WrapperContract.balanceOf(uploader)).gt(await augurDaoContract.proposalThreshold()));
+    assert((await wrappedReputationTokenContract.balanceOf(uploader)).gt(await augurDaoContract.proposalThreshold()));
     await augurDaoContract.propose(
       [augurDaoContract.address, augurDaoContract.address, augurDaoContract.address],
       ["0", "0", "0"],
@@ -279,21 +279,21 @@ describe("augur dao", () => {
     voteReceipt = await augurDaoContract.getReceipt(proposalId, signers[1].address);
     assert.equal(voteReceipt.hasVoted, true);
     assert.equal(voteReceipt.support, true);
-    assert(voteReceipt.votes.eq(amountOfRepv2ToWrap));
+    assert(voteReceipt.votes.eq(amountOfReputationTokenToWrap));
     proposal = await augurDaoContract.proposals(proposalId);
-    assert(proposal.forVotes.eq(amountOfRepv2ToWrap));
+    assert(proposal.forVotes.eq(amountOfReputationTokenToWrap));
     assert(proposal.againstVotes.eq(0));
     assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Active");
 
     await augurDaoContract.connect(signers[2]).castVote(proposalId, true);
     proposal = await augurDaoContract.proposals(proposalId);
-    assert(proposal.forVotes.eq(amountOfRepv2ToWrap.mul(2)));
+    assert(proposal.forVotes.eq(amountOfReputationTokenToWrap.mul(2)));
     assert(proposal.againstVotes.eq(0));
     assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Active");
 
     await augurDaoContract.connect(signers[3]).castVote(proposalId, true);
     proposal = await augurDaoContract.proposals(proposalId);
-    assert(proposal.forVotes.eq(amountOfRepv2ToWrap.mul(3)));
+    assert(proposal.forVotes.eq(amountOfReputationTokenToWrap.mul(3)));
     assert(proposal.againstVotes.eq(0));
     assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Active");
 
@@ -302,7 +302,7 @@ describe("augur dao", () => {
       await ethers.provider.send("evm_mine");
     }
     proposal = await augurDaoContract.proposals(proposalId);
-    assert(proposal.forVotes.eq(amountOfRepv2ToWrap.mul(3)));
+    assert(proposal.forVotes.eq(amountOfReputationTokenToWrap.mul(3)));
     assert(proposal.againstVotes.eq(0));
     assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Succeeded");
 
@@ -329,7 +329,7 @@ describe("augur dao", () => {
     }    
 
     // signer 0 makes a proposal on augur dao to burn some of the guardian tokens held by signers 1, 2, and 3
-    assert((await repv2WrapperContract.balanceOf(uploader)).gt(await augurDaoContract.proposalThreshold()));
+    assert((await wrappedReputationTokenContract.balanceOf(uploader)).gt(await augurDaoContract.proposalThreshold()));
     await augurDaoContract.propose(
       [augurDaoContract.address, augurDaoContract.address, augurDaoContract.address],
       ["0", "0", "0"],
@@ -357,9 +357,9 @@ describe("augur dao", () => {
     voteReceipt = await augurDaoContract.getReceipt(proposalId, signers[1].address);
     assert.equal(voteReceipt.hasVoted, true);
     assert.equal(voteReceipt.support, true);
-    assert(voteReceipt.votes.eq(amountOfRepv2ToWrap));
+    assert(voteReceipt.votes.eq(amountOfReputationTokenToWrap));
     proposal = await augurDaoContract.proposals(proposalId);
-    assert(proposal.forVotes.eq(amountOfRepv2ToWrap));
+    assert(proposal.forVotes.eq(amountOfReputationTokenToWrap));
     assert(proposal.againstVotes.eq(0));
     assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Active");
 
@@ -368,10 +368,10 @@ describe("augur dao", () => {
     voteReceipt = await augurDaoContract.getReceipt(proposalId, signers[2].address);
     assert.equal(voteReceipt.hasVoted, true);
     assert.equal(voteReceipt.support, false);
-    assert(voteReceipt.votes.eq(amountOfRepv2ToWrap));
+    assert(voteReceipt.votes.eq(amountOfReputationTokenToWrap));
     proposal = await augurDaoContract.proposals(proposalId);
-    assert(proposal.forVotes.eq(amountOfRepv2ToWrap));
-    assert(proposal.againstVotes.eq(amountOfRepv2ToWrap));
+    assert(proposal.forVotes.eq(amountOfReputationTokenToWrap));
+    assert(proposal.againstVotes.eq(amountOfReputationTokenToWrap));
     assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Active");
 
     // signer 3 makes a proposal to cancel the proposal through the guardian dao
@@ -476,7 +476,7 @@ describe("augur dao", () => {
     assert.equal(proposalState[await guardianDaoContract.state(proposalId)], "Queued");
     await ethers.provider.send("evm_increaseTime", [timelockDelay]);
     assert.equal(await augurDaoContract.guardian(), guardianDaoTimelockContract.address);
-    assert.equal(await augurDaoContract.comp(), repv2WrapperContract.address);
+    assert.equal(await augurDaoContract.comp(), wrappedReputationTokenContract.address);
     await guardianDaoContract.execute(proposalId);
     assert.equal(proposalState[await guardianDaoContract.state(proposalId)], "Executed");
     for (let i = 1; i < 4; i++) {
