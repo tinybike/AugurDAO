@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.2;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.11;
+pragma abicoder v2;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
@@ -8,13 +8,22 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20VotesComp.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Wrapper.sol";
 
+/**
+ * @title Wrapped Reputation Token
+ * @notice Wraps a Augur Reputation Token (or another ERC20 token) so that it has the functionality expected by AugurDAO.
+ */
 contract WrappedReputationToken is ERC20, ERC20Permit, ERC20VotesComp, ERC20Wrapper {
 
-    constructor(IERC20 wrappedToken)
-        ERC20("Wrapped REPv2", "wREPv2")
+    /**
+     * @param reputationTokenToWrap_ The address of the Reputation Token that this contract will wrap.
+     */
+    constructor(IERC20 reputationTokenToWrap_)
+        ERC20("Wrapped Reputation", "wREPv2")
         ERC20Permit("Wrapped REPv2")
-        ERC20Wrapper(wrappedToken)
+        ERC20Wrapper(reputationTokenToWrap_)
     {}
+
+    // The functions below are overrides required by Solidity.
 
     function _afterTokenTransfer(address from, address to, uint256 amount) internal override(ERC20, ERC20Votes) {
         super._afterTokenTransfer(from, to, amount);

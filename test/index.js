@@ -114,8 +114,14 @@ describe("augur dao", () => {
     await augurDaoContract.__acceptAdmin();
     assert.equal(await augurDaoTimelockContract.admin(), augurDaoContract.address);
     await augurDaoContract.changeGuardian(guardianDaoTimelockContract.address);
+    await expect(
+      augurDaoContract.changeGuardian(uploader)
+    ).to.be.revertedWith("AugurDAO::changeGuardian: Guardian can only be changed once");
     assert.equal(await augurDaoTimelockContract.admin(), augurDaoContract.address);
     await nonTransferableTokenContract.initialize(augurDaoContract.address);
+    await expect(
+      nonTransferableTokenContract.initialize(uploader)
+    ).to.be.revertedWith("Initializable: contract is already initialized");
     assert.equal(await nonTransferableTokenContract.canMintAndBurn(), augurDaoContract.address);
   };
 
@@ -170,6 +176,7 @@ describe("augur dao", () => {
     // signer 0 makes a proposal to mint tokens to signers 1, 2, and 3
     const governanceTokensToMint = ethers.BigNumber.from(300000).mul(bigOne);
     assert((await wrappedReputationTokenContract.balanceOf(uploader)).gt(await augurDaoContract.proposalThreshold()));
+    assert((await nonTransferableTokenContract.balanceOf(uploader)).eq(0));
     await augurDaoContract.propose(
       [augurDaoContract.address, augurDaoContract.address, augurDaoContract.address],
       ["0", "0", "0"],
@@ -240,10 +247,10 @@ describe("augur dao", () => {
     .to.be.revertedWith("NonTransferableToken::_beforeTokenTransfer: NonTransferableToken is non-transferable");
     await expect(
       nonTransferableTokenContract.mint(uploader, 1)
-    ).to.be.revertedWith("NonTransferableToken::mint: Only governor address can mint tokens");
+    ).to.be.revertedWith("NonTransferableToken::mint: Only the canMintAndBurn address can mint tokens");
     await expect(
       nonTransferableTokenContract.burn(uploader, 1)
-    ).to.be.revertedWith("NonTransferableToken::burn: Only governor address can burn tokens");
+    ).to.be.revertedWith("NonTransferableToken::burn: Only the canMintAndBurn address can burn tokens");
 
 
     // proposal 2: augur dao burns some guardian dao governance tokens
