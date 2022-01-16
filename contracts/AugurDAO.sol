@@ -5,10 +5,14 @@ import "./GovernorAlpha.sol";
 
 /**
  * @title Augur DAO
- * @notice Augur DAO is a modified GovernorAlpha contract that is "guarded" by a guardian DAO.  The guardian DAO uses a non-transferable token for voting, which can be minted and burned by the Augur DAO.  The guardian DAO "guards" the Augur DAO in the sense that it can:
+ * @notice Augur DAO is a modified GovernorAlpha contract that is "guarded" by a guardian DAO.  The guardian DAO uses a
+ * non-transferable token for voting, which can be minted and burned by the Augur DAO.  The guardian DAO "guards" the
+ * Augur DAO in the sense that it can:
  *   1. Vote to cancel proposals on Augur DAO.
- *   2. Vote to change the governance token of the Augur DAO.  This is intended to be used to update the Reputation Token wrapper address in the event of an Augur universe fork.
- * @dev AugurDAO is a modified version of GovernorAlpha that has extra functions to interact with a second "guardian" DAO.  The guardian DAO is intended to be an unmodified GovernorAlpha contract.
+ *   2. Vote to change the governance token of the Augur DAO.  This is intended to be used to update the Reputation
+ *      Token wrapper address in the event of an Augur universe fork.
+ * @dev AugurDAO is a modified version of GovernorAlpha that has extra functions to interact with a second "guardian"
+ * DAO.  The guardian DAO is intended to be an unmodified GovernorAlpha contract.
  */
 contract AugurDAO is GovernorAlpha {
 
@@ -28,7 +32,8 @@ contract AugurDAO is GovernorAlpha {
      * @param timelock_ Address of the Timelock contract responsible for proposal queueing and execution.
      * @param wrappedReputationContract_ Address of the Comp-compatible WrappedReputationToken contract.
      * @param guardian_ Address of the guardian.  Initially this is generally just the uploader's address.
-     * @param guardianGovernanceToken_ Address of the guardian DAO's governance token, which is a non-transferable token with mint and burn functions.
+     * @param guardianGovernanceToken_ Address of the guardian DAO's governance token, which is a non-transferable
+     * token with mint and burn functions.
      */
     constructor(address timelock_, address wrappedReputationContract_, address guardian_, address guardianGovernanceToken_)
         GovernorAlpha(timelock_, wrappedReputationContract_, guardian_)
@@ -45,7 +50,8 @@ contract AugurDAO is GovernorAlpha {
     }
 
     /**
-     * @notice The guardian can assign a new guardian for the Augur DAO.  This can only be done once, and is intended to be used to set the guardian to the guardian DAO.
+     * @notice The guardian can assign a new guardian for the Augur DAO.  This can only be done once, and is intended
+     * to be used to set the guardian to the guardian DAO.
      * @param newGuardian_ The address of the new guardian, which should be the address of the guardian DAO.
      */
     function changeGuardian(address newGuardian_) public {
@@ -56,8 +62,10 @@ contract AugurDAO is GovernorAlpha {
     }
 
     /**
-     * @notice The guardian can change the governance token (i.e., Augur Reputation Token) used by Augur DAO, for example in case of an Augur universe fork.
-     * @param newGovernanceToken_ The address of the new governance token, e.g. the new WrappedReputationToken contract address associated with the ReputationToken of the correct Augur universe.
+     * @notice The guardian can change the governance token (i.e., Augur Reputation Token) used by Augur DAO, for
+     * example in case of an Augur universe fork.
+     * @param newGovernanceToken_ The address of the new governance token, e.g. the new WrappedReputationToken
+     * contract address associated with the ReputationToken of the correct Augur universe.
      */
     function changeGovernanceToken(address newGovernanceToken_) public {
         require(msg.sender == guardian, "AugurDAO::changeGovernanceToken: The governance token can only be changed by the guardian");

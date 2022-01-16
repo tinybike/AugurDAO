@@ -11,12 +11,15 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20VotesComp.sol";
 /**
  * @title Non-Transferable Token
  * @notice A non-transferable ERC20 token intended for use as a governance token for AugurDAO.
- * @dev This contract implements special mint and burn functions that can only be called by the canMintAndBurn address, which is set during initialization.  In the context of AugurDAO, canMintAndBurn should be the address of the AugurDAO contract.
+ * @dev This contract implements special mint and burn functions that can only be called by the canMintAndBurn address,
+ * which is set during initialization.  In the context of AugurDAO, canMintAndBurn should be the address of the
+ * AugurDAO contract.
  */
 contract NonTransferableToken is ERC20, ERC20Permit, ERC20VotesComp, Initializable {
 
     /**
-     * @dev The address that is allowed to mint and burn Non-Transferable Tokens.  In the context of AugurDAO, this should be set during initialization to the AugurDAO contract address.
+     * @dev The address that is allowed to mint and burn Non-Transferable Tokens.  In the context of AugurDAO, this
+     * should be set during initialization to the AugurDAO contract address.
      */
     address public canMintAndBurn;
 
@@ -26,7 +29,8 @@ contract NonTransferableToken is ERC20, ERC20Permit, ERC20VotesComp, Initializab
     {}
 
     /**
-     * @param canMintAndBurn_ The address that is allowed to mint and burn Non-Transferable Tokens.  In the context of AugurDAO, this should be the AugurDAO contract address.
+     * @param canMintAndBurn_ The address that is allowed to mint and burn Non-Transferable Tokens.  In the context of
+     * AugurDAO, this should be the AugurDAO contract address.
      */
     function initialize(address canMintAndBurn_) public initializer {
         canMintAndBurn = canMintAndBurn_;
@@ -34,7 +38,8 @@ contract NonTransferableToken is ERC20, ERC20Permit, ERC20VotesComp, Initializab
 
     /**
      * @notice Makes this token non-transferable.
-     * @dev Requires that either the from or to address for transfers be set to 0, so that only transfers from the 0 address (i.e., minting and burning) are allowed.
+     * @dev Requires that either the from or to address for transfers be set to 0, so that only transfers from the 0
+     * address (i.e., minting and burning) are allowed.
      */
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal override(ERC20) {
         require(from == address(0) || to == address(0), "NonTransferableToken::_beforeTokenTransfer: NonTransferableToken is non-transferable");

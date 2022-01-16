@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Wrapper.sol";
 
 /**
  * @title Wrapped Reputation Token
- * @notice Wraps a Augur Reputation Token (or another ERC20 token) so that it has the functionality expected by AugurDAO.
+ * @notice Wraps a Augur Reputation Token (or another ERC20 token) to have the functionality expected by AugurDAO.
  */
 contract WrappedReputationToken is ERC20, ERC20Permit, ERC20VotesComp, ERC20Wrapper {
 
