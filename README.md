@@ -1,12 +1,12 @@
 # Augur DAO
 
-Augur DAO is a modified GovernorAlpha contract that is "guarded" by a guardian DAO.
+Augur DAO is a modified version of [Governor Alpha](https://github.com/compound-finance/compound-protocol/blob/master/contracts/Governance/GovernorAlpha.sol) designed to serve as a DAO for the [Augur Project](https://augur.net).  While it is intended to use Augur's [Reputation Token](https://github.com/AugurProject/augur/blob/dev/packages/augur-core/src/contracts/reporting/ReputationToken.sol) as its governance token, any ERC20 token will work equally well.
 
 ## Contracts
 
 ### AugurDAO
 
-The AugurDAO contract is a modified version of [Compound's](https://github.com/compound-finance/compound-protocol) [GovernorAlpha](https://github.com/compound-finance/compound-protocol/blob/master/contracts/Governance/GovernorAlpha.sol) contract.  AugurDAO has extra functions to interact with a second "guardian" DAO.  The guardian DAO is a GovernorAlpha contract, unmodified except for changes to constants.
+The AugurDAO contract is a modified version of [Compound's](https://github.com/compound-finance/compound-protocol) GovernorAlpha contract.  AugurDAO has extra functions to interact with a second "guardian" DAO.  The guardian DAO is a GovernorAlpha contract which is unmodified except for changes to constants.
 
 The guardian DAO uses a non-transferable token for voting, which can be minted and burned by the Augur DAO.  The guardian DAO "guards" the Augur DAO in the sense that it can:
 
@@ -23,7 +23,7 @@ A non-transferable ERC20 token intended for use as a governance token for AugurD
 
 ### GovernorAlpha, Timelock, SafeMath
 
-These are essentially unmodified contracts from [Compound](https://github.com/compound-finance/compound-protocol/blob/master/contracts).  The only changes are to constants on the GovernorAlpha contract.
+These are essentially unmodified Compound contracts.  The only changes are to constants on the GovernorAlpha contract.
 
 ## Tests
 

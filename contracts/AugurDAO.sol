@@ -43,10 +43,15 @@ contract AugurDAO is GovernorAlpha {
     }
 
     /**
-     * @return uint Voting period for the Augur DAO, in seconds.
+     * @notice This contract can receive Ether.
+     */
+    function() external payable {}
+
+    /**
+     * @return uint The duration of voting on a proposal, in blocks.
      */
     function votingPeriod() public pure returns (uint) {
-        return 100; // for testing ONLY
+        return 23040; // ~4 days in blocks (assuming 15s blocks)
     }
 
     /**

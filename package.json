@@ -1,7 +1,7 @@
 {
   "name": "augurdao",
   "version": "0.0.1",
-  "description": "augurdao",
+  "description": "Augur DAO",
   "scripts": {
     "test": "hardhat test"
   },
@@ -9,14 +9,15 @@
     "type": "git",
     "url": "git+https://github.com/tinybike/augurdao.git"
   },
+  "dependencies": {
+    "@openzeppelin/contracts": "4.4.2",
+    "openzeppelin-solidity": "4.4.2"
+  },
   "devDependencies": {
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "chai": "^4.3.4",
     "ethers": "^5.5.3",
-    "hardhat": "^2.8.2"
-  },
-  "dependencies": {
-    "@openzeppelin/contracts": "4.4.2",
-    "openzeppelin-solidity": "4.4.2"
+    "hardhat": "^2.8.2",
+    "hardhat-dependency-compiler": "^1.1.2"
   }
 }

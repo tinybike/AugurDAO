@@ -3,34 +3,45 @@ const { assert, expect } = require("chai");
 describe("augur dao", () => {
   let signers;
   let uploader;
+  let reputationTokenMockContract;
+  let daiTokenMockContract;
   let wrappedReputationTokenContract;
   let augurDaoTimelockContract;
   let guardianDaoTimelockContract;
   let guardianDaoContract;
   let nonTransferableTokenContract;
   let augurDaoContract;
+  let vestingWalletContract;
+  let ERC20Mock;
   const abi = new ethers.utils.AbiCoder();
-  const timelockDelay = 86400 * 2;
+  const oneDayInSeconds = 86400;
+  const timelockDelay = oneDayInSeconds * 2; // 2 days
   const zeroAddress = "0x0000000000000000000000000000000000000000";
-  const bigOne = ethers.BigNumber.from(10).pow(18);
-  const uploaderReputationTokenBalance = ethers.BigNumber.from(100000000).mul(bigOne);
-  const initialReputationTokenBalances = ethers.BigNumber.from(400000).mul(bigOne);
-  const amountOfReputationTokenToWrap = ethers.BigNumber.from(300000).mul(bigOne);
+  const uploaderReputationTokenBalance = ethers.utils.parseEther("10000000");
+  const uploaderDaiTokenBalance = ethers.utils.parseEther("123456789");
+  const initialReputationTokenBalances = ethers.utils.parseEther("40000");
+  const amountOfReputationTokenToWrap = ethers.utils.parseEther("30000");
+  const vestingStartTimestamp = Math.floor((new Date()).getTime() / 1000); // now
+  const vestingDurationSeconds = oneDayInSeconds * 365; // 1 year
+  const etherToVest = ethers.utils.parseEther("123");
+  const reputationTokensToVest = ethers.utils.parseEther("456");
+  const daiTokensToVest = ethers.utils.parseEther("789");
 
   const deployContractsAndSetupAccounts = async () => {
     signers = await ethers.getSigners();
     uploader = signers[0].address;
 
-    const ReputationTokenMock = await ethers.getContractFactory("ReputationTokenMock");
-    reputationTokenMockContract = await ReputationTokenMock.deploy(uploader, uploaderReputationTokenBalance);
+    ERC20Mock = await ethers.getContractFactory("ERC20Mock");
+    reputationTokenMockContract = await ERC20Mock.deploy("REP", uploader, uploaderReputationTokenBalance);
     await reputationTokenMockContract.deployed();
     for (let i = 1; i < signers.length; i++) {
       await reputationTokenMockContract.transfer(signers[i].address, initialReputationTokenBalances);
       assert((await reputationTokenMockContract.balanceOf(signers[i].address)).eq(initialReputationTokenBalances));
     }
 
-    const WrappedReputationToken = await ethers.getContractFactory("WrappedReputationToken");
-    wrappedReputationTokenContract = await WrappedReputationToken.deploy(reputationTokenMockContract.address);
+    wrappedReputationTokenContract = await (await ethers.getContractFactory("WrappedReputationToken")).deploy(
+      reputationTokenMockContract.address
+    );
     await wrappedReputationTokenContract.deployed();
     for (let i = 0; i < signers.length; i++) {
       await reputationTokenMockContract.connect(signers[i]).approve(wrappedReputationTokenContract.address, amountOfReputationTokenToWrap);
@@ -38,8 +49,7 @@ describe("augur dao", () => {
       assert((await wrappedReputationTokenContract.balanceOf(signers[i].address)).eq(amountOfReputationTokenToWrap));
     }
 
-    const NonTransferableToken = await ethers.getContractFactory("NonTransferableToken");
-    nonTransferableTokenContract = await NonTransferableToken.deploy();
+    nonTransferableTokenContract = await (await ethers.getContractFactory("NonTransferableToken")).deploy();
     await nonTransferableTokenContract.deployed();
     assert.equal(await nonTransferableTokenContract.canMintAndBurn(), zeroAddress);
 
@@ -53,8 +63,11 @@ describe("augur dao", () => {
     const Timelock = await ethers.getContractFactory("Timelock");
     guardianDaoTimelockContract = await Timelock.deploy(uploader, timelockDelay);
     await guardianDaoTimelockContract.deployed();
-    const GovernorAlpha = await ethers.getContractFactory("GovernorAlpha");
-    guardianDaoContract = await GovernorAlpha.deploy(guardianDaoTimelockContract.address, nonTransferableTokenContract.address, uploader);
+    guardianDaoContract = await (await ethers.getContractFactory("GovernorAlpha")).deploy(
+      guardianDaoTimelockContract.address,
+      nonTransferableTokenContract.address,
+      uploader
+    );
     await guardianDaoContract.deployed();
     assert.equal(await guardianDaoContract.guardian(), uploader);
     assert.equal(await guardianDaoContract.timelock(), guardianDaoTimelockContract.address);
@@ -85,8 +98,12 @@ describe("augur dao", () => {
 
     augurDaoTimelockContract = await Timelock.deploy(uploader, timelockDelay);
     await augurDaoTimelockContract.deployed();
-    const AugurDAO = await ethers.getContractFactory("AugurDAO");
-    augurDaoContract = await AugurDAO.deploy(augurDaoTimelockContract.address, wrappedReputationTokenContract.address, uploader, nonTransferableTokenContract.address);
+    augurDaoContract = await (await ethers.getContractFactory("AugurDAO")).deploy(
+      augurDaoTimelockContract.address,
+      wrappedReputationTokenContract.address,
+      uploader,
+      nonTransferableTokenContract.address
+    );
     await augurDaoContract.deployed();
     assert.equal(await augurDaoContract.guardian(), uploader);
     assert.equal(await augurDaoContract.timelock(), augurDaoTimelockContract.address);
@@ -123,6 +140,78 @@ describe("augur dao", () => {
       nonTransferableTokenContract.initialize(uploader)
     ).to.be.revertedWith("Initializable: contract is already initialized");
     assert.equal(await nonTransferableTokenContract.canMintAndBurn(), augurDaoContract.address);
+
+    // set up a mock dai contract for use with the vesting wallet
+    daiTokenMockContract = await ERC20Mock.deploy("DAI", uploader, uploaderDaiTokenBalance);
+    await daiTokenMockContract.deployed();
+    assert((await daiTokenMockContract.balanceOf(uploader)).eq(uploaderDaiTokenBalance));
+
+    // set up and fund a vesting wallet for gradual release of funds into augur dao
+    vestingWalletContract = await (await ethers.getContractFactory("VestingWallet")).deploy(
+      augurDaoContract.address,
+      vestingStartTimestamp,
+      vestingDurationSeconds
+    );
+    await vestingWalletContract.deployed();
+    assert((await vestingWalletContract.start()).eq(vestingStartTimestamp));
+    assert((await vestingWalletContract.duration()).eq(vestingDurationSeconds));
+    assert((await vestingWalletContract["released()"]()).eq(0));
+    assert((await vestingWalletContract["released(address)"](reputationTokenMockContract.address)).eq(0));
+    assert((await vestingWalletContract["released(address)"](daiTokenMockContract.address)).eq(0));
+    const uploaderInitialEtherBalance = await ethers.provider.getBalance(uploader);
+    const { gasUsed, effectiveGasPrice } = (await (await signers[0].sendTransaction({
+      to: vestingWalletContract.address,
+      value: etherToVest,
+    })).wait());
+    const uploaderFinalEtherBalance = await ethers.provider.getBalance(uploader);
+    const expectedEtherBalanceChange = uploaderInitialEtherBalance.sub(uploaderFinalEtherBalance);
+    const actualEtherBalanceChange = gasUsed.mul(effectiveGasPrice).add(etherToVest);
+    assert(expectedEtherBalanceChange.eq(actualEtherBalanceChange));
+    assert((await ethers.provider.getBalance(vestingWalletContract.address)).eq(etherToVest));
+    await reputationTokenMockContract.transfer(vestingWalletContract.address, reputationTokensToVest);
+    await daiTokenMockContract.transfer(vestingWalletContract.address, daiTokensToVest);
+    assert((await reputationTokenMockContract.balanceOf(vestingWalletContract.address)).eq(reputationTokensToVest));
+    assert((await reputationTokenMockContract.balanceOf(augurDaoContract.address)).eq(0));
+    assert((await daiTokenMockContract.balanceOf(vestingWalletContract.address)).eq(daiTokensToVest));
+    assert((await daiTokenMockContract.balanceOf(augurDaoContract.address)).eq(0));
+    assert((await vestingWalletContract["released()"]()).eq(0));
+    assert((await vestingWalletContract["released(address)"](reputationTokenMockContract.address)).eq(0));
+    assert((await vestingWalletContract["released(address)"](daiTokenMockContract.address)).eq(0));
+
+    // release funds after 1 day and check balances
+    await ethers.provider.send("evm_increaseTime", [oneDayInSeconds]);
+    assert((await vestingWalletContract["released()"]()).eq(0));
+    assert((await ethers.provider.getBalance(augurDaoContract.address)).eq(0));
+    await vestingWalletContract["release()"]();
+    const etherReleasedAfter1Day = await vestingWalletContract["released()"]();
+    assert((await ethers.provider.getBalance(augurDaoContract.address)).eq(etherReleasedAfter1Day));
+    assert((await vestingWalletContract["released(address)"](reputationTokenMockContract.address)).eq(0));
+    await vestingWalletContract["release(address)"](reputationTokenMockContract.address);
+    const reputationTokensReleasedAfter1Day = await vestingWalletContract["released(address)"](reputationTokenMockContract.address);
+    assert((await reputationTokenMockContract.balanceOf(augurDaoContract.address)).eq(reputationTokensReleasedAfter1Day));
+    assert((await vestingWalletContract["released(address)"](daiTokenMockContract.address)).eq(0));
+    await vestingWalletContract["release(address)"](daiTokenMockContract.address);
+    const daiTokensReleasedAfter1Day = await vestingWalletContract["released(address)"](daiTokenMockContract.address);
+    assert((await daiTokenMockContract.balanceOf(augurDaoContract.address)).eq(daiTokensReleasedAfter1Day));
+
+    // after 365 days all funds should be released
+    await ethers.provider.send("evm_increaseTime", [oneDayInSeconds * 364]);
+    assert((await vestingWalletContract["released()"]()).eq(etherReleasedAfter1Day));
+    assert((await ethers.provider.getBalance(augurDaoContract.address)).eq(etherReleasedAfter1Day));
+    await vestingWalletContract["release()"]();
+    const etherReleasedAfter365Days = await vestingWalletContract["released()"]();
+    assert((await ethers.provider.getBalance(augurDaoContract.address)).eq(etherReleasedAfter365Days));
+    assert(etherReleasedAfter365Days.eq(etherToVest));
+    assert((await vestingWalletContract["released(address)"](reputationTokenMockContract.address)).eq(reputationTokensReleasedAfter1Day));
+    await vestingWalletContract["release(address)"](reputationTokenMockContract.address);
+    const reputationTokensReleasedAfter365Days = await vestingWalletContract["released(address)"](reputationTokenMockContract.address);
+    assert(reputationTokensReleasedAfter365Days.eq(reputationTokensToVest));
+    assert((await reputationTokenMockContract.balanceOf(augurDaoContract.address)).eq(reputationTokensReleasedAfter365Days));
+    assert((await vestingWalletContract["released(address)"](daiTokenMockContract.address)).eq(daiTokensReleasedAfter1Day));
+    await vestingWalletContract["release(address)"](daiTokenMockContract.address);
+    const daiTokensReleasedAfter365Days = await vestingWalletContract["released(address)"](daiTokenMockContract.address);
+    assert((await daiTokenMockContract.balanceOf(augurDaoContract.address)).eq(daiTokensReleasedAfter365Days));
+    assert(daiTokensReleasedAfter365Days.eq(daiTokensToVest));
   };
 
   const proposalState = [
@@ -133,21 +222,22 @@ describe("augur dao", () => {
     "Succeeded",
     "Queued",
     "Expired",
-    "Executed"
+    "Executed",
   ];
 
-  it("wrap and unwrap some repv2", async () => {
+  it("wrap and unwrap some reputation tokens", async () => {
     signers = await ethers.getSigners();
     uploader = signers[0].address;
-
-    const ReputationTokenMock = await ethers.getContractFactory("ReputationTokenMock");
-    reputationTokenMockContract = await ReputationTokenMock.deploy(uploader, uploaderReputationTokenBalance);
+    reputationTokenMockContract = await (await ethers.getContractFactory("ERC20Mock")).deploy(
+      "REP",
+      uploader,
+      uploaderReputationTokenBalance
+    );
     await reputationTokenMockContract.deployed();
-
-    const WrappedReputationToken = await ethers.getContractFactory("WrappedReputationToken");
-    wrappedReputationTokenContract = await WrappedReputationToken.deploy(reputationTokenMockContract.address);
+    wrappedReputationTokenContract = await (await ethers.getContractFactory("WrappedReputationToken")).deploy(
+      reputationTokenMockContract.address
+    );
     await wrappedReputationTokenContract.deployed();
-
     const initialRepv2Balance = await reputationTokenMockContract.balanceOf(uploader);
     assert.equal(await wrappedReputationTokenContract.balanceOf(uploader), 0);
     await reputationTokenMockContract.approve(wrappedReputationTokenContract.address, 10);
@@ -174,7 +264,7 @@ describe("augur dao", () => {
     }
 
     // signer 0 makes a proposal to mint tokens to signers 1, 2, and 3
-    const governanceTokensToMint = ethers.BigNumber.from(300000).mul(bigOne);
+    const governanceTokensToMint = ethers.utils.parseEther("300000");
     assert((await wrappedReputationTokenContract.balanceOf(uploader)).gt(await augurDaoContract.proposalThreshold()));
     assert((await nonTransferableTokenContract.balanceOf(uploader)).eq(0));
     await augurDaoContract.propose(
@@ -243,8 +333,8 @@ describe("augur dao", () => {
 
     // non-transferable token is non-transferable
     await expect(
-      nonTransferableTokenContract.connect(signers[1]).transfer(signers[2].address, 1))
-    .to.be.revertedWith("NonTransferableToken::_beforeTokenTransfer: NonTransferableToken is non-transferable");
+      nonTransferableTokenContract.connect(signers[1]).transfer(signers[2].address, 1)
+    ).to.be.revertedWith("NonTransferableToken::_beforeTokenTransfer: NonTransferableToken is non-transferable");
     await expect(
       nonTransferableTokenContract.mint(uploader, 1)
     ).to.be.revertedWith("NonTransferableToken::mint: Only the canMintAndBurn address can mint tokens");
@@ -256,7 +346,7 @@ describe("augur dao", () => {
     // proposal 2: augur dao burns some guardian dao governance tokens
 
     // signer 0 makes a proposal on augur dao to burn some of the guardian tokens held by signers 1, 2, and 3
-    const governanceTokensToBurn = ethers.BigNumber.from(10000).mul(bigOne);
+    const governanceTokensToBurn = ethers.utils.parseEther("10000");
     const governanceTokensRemaining = governanceTokensToMint.sub(governanceTokensToBurn);
     assert((await wrappedReputationTokenContract.balanceOf(uploader)).gt(await augurDaoContract.proposalThreshold()));
     await augurDaoContract.propose(
@@ -436,8 +526,28 @@ describe("augur dao", () => {
 
     // proposal 4: guardian dao changes augur dao's governance token (oh no, augur has forked!)
 
+    // set up the new wrapped reputation token with account 0, then fund accounts 1 and 2, then wrap
+    const uploaderNewReputationTokenBalance = ethers.utils.parseEther("999999");
+    const initialNewReputationTokenBalances = ethers.utils.parseEther("111111");
+    const amountOfNewReputationTokenToWrap = ethers.utils.parseEther("111110");
+    const newReputationTokenMockContract = await ERC20Mock.deploy("REPv3", uploader, uploaderReputationTokenBalance);
+    await newReputationTokenMockContract.deployed();
+    for (let i = 1; i < 3; i++) {
+      await newReputationTokenMockContract.transfer(signers[i].address, initialNewReputationTokenBalances);
+      assert((await newReputationTokenMockContract.balanceOf(signers[i].address)).eq(initialNewReputationTokenBalances));
+    }
+
+    const WrappedReputationToken = await ethers.getContractFactory("WrappedReputationToken");
+    newWrappedReputationTokenContract = await WrappedReputationToken.deploy(newReputationTokenMockContract.address);
+    await newWrappedReputationTokenContract.deployed();
+    for (let i = 1; i < 3; i++) {
+      await newReputationTokenMockContract.connect(signers[i]).approve(newWrappedReputationTokenContract.address, amountOfNewReputationTokenToWrap);
+      await newWrappedReputationTokenContract.connect(signers[i]).depositFor(signers[i].address, amountOfNewReputationTokenToWrap);
+      assert((await newWrappedReputationTokenContract.balanceOf(signers[i].address)).eq(amountOfNewReputationTokenToWrap));
+    }
+
     // signer 1 makes a proposal to change augur dao's governance token
-    const newGovernanceTokenAddress = "0x00000000000000000000000000000000DeaDBeef";
+    const newGovernanceTokenAddress = newWrappedReputationTokenContract.address;
     await expect(
       augurDaoContract.changeGovernanceToken(newGovernanceTokenAddress)
     ).to.be.revertedWith("AugurDAO::changeGovernanceToken: The governance token can only be changed by the guardian");
@@ -490,5 +600,5 @@ describe("augur dao", () => {
       assert((await nonTransferableTokenContract.balanceOf(signers[i].address)).eq(governanceTokensRemaining));
     }
     assert.equal(await augurDaoContract.comp(), newGovernanceTokenAddress);
-  }).timeout(100000);
+  });
 });
