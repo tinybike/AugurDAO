@@ -15,7 +15,7 @@ The guardian DAO uses a non-transferable token for voting, which can be minted a
 
 ### WrappedReputationToken
 
-Wraps a Augur Reputation Token (or another ERC20 token) so that it has the functionality expected by AugurDAO.
+Wraps an Augur Reputation Token (or another ERC20 token) so that it has the functionality expected by AugurDAO.
 
 ### NonTransferableToken
 
