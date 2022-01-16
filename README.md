@@ -1,12 +1,12 @@
 # Augur DAO
 
-Augur DAO is a GovernorAlpha contract that is "guarded" by a guardian DAO.
+Augur DAO is a modified GovernorAlpha contract that is "guarded" by a guardian DAO.
 
 ## Contracts
 
 #### AugurDAO
 
-The AugurDAO contract is a modified version of [Compound's](https://github.com/compound-finance/compound-protocol) [GovernorAlpha contract](https://github.com/compound-finance/compound-protocol/blob/master/contracts/Governance/GovernorAlpha.sol).  AugurDAO has extra functions to interact with a second "guardian" DAO.  The guardian DAO is a GovernorAlpha contract, unmodified except for changes to constants.
+The AugurDAO contract is a modified version of [Compound's](https://github.com/compound-finance/compound-protocol) [GovernorAlpha](https://github.com/compound-finance/compound-protocol/blob/master/contracts/Governance/GovernorAlpha.sol) contract.  AugurDAO has extra functions to interact with a second "guardian" DAO.  The guardian DAO is a GovernorAlpha contract, unmodified except for changes to constants.
 
 The guardian DAO uses a non-transferable token for voting, which can be minted and burned by the Augur DAO.  The guardian DAO "guards" the Augur DAO in the sense that it can:
 

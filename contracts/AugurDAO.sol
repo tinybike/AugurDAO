@@ -5,7 +5,7 @@ import "./GovernorAlpha.sol";
 
 /**
  * @title Augur DAO
- * @notice Augur DAO is a GovernorAlpha contract that is "guarded" by a guardian DAO.  The guardian DAO uses a non-transferable token for voting, which can be minted and burned by the Augur DAO.  The guardian DAO "guards" the Augur DAO in the sense that it can:
+ * @notice Augur DAO is a modified GovernorAlpha contract that is "guarded" by a guardian DAO.  The guardian DAO uses a non-transferable token for voting, which can be minted and burned by the Augur DAO.  The guardian DAO "guards" the Augur DAO in the sense that it can:
  *   1. Vote to cancel proposals on Augur DAO.
  *   2. Vote to change the governance token of the Augur DAO.  This is intended to be used to update the Reputation Token wrapper address in the event of an Augur universe fork.
  * @dev AugurDAO is a modified version of GovernorAlpha that has extra functions to interact with a second "guardian" DAO.  The guardian DAO is intended to be an unmodified GovernorAlpha contract.
