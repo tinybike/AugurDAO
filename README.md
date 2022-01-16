@@ -13,6 +13,8 @@ The guardian DAO uses a non-transferable token for voting, which can be minted a
 1. Vote to cancel proposals on Augur DAO.
 2. Vote to change the governance token of the Augur DAO.  This is intended to be used to update the Reputation Token wrapper address in the event of an Augur universe fork.
 
+Note: AugurDAO is intended to receive funds gradually over time, using a mechanism such as OpenZeppelin's [VestingWallet](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/finance/VestingWallet.sol).
+
 ### WrappedReputationToken
 
 Wraps an Augur Reputation Token (or another ERC20 token) so that it has the functionality expected by AugurDAO.
