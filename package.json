@@ -11,9 +11,8 @@
     "url": "git+https://github.com/tinybike/augurdao.git"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "2.5.1",
-    "@openzeppelin/contracts-4.4.1": "npm:@openzeppelin/contracts@4.4.1",
-    "openzeppelin-solidity": "2.5.1"
+    "@openzeppelin/contracts": "4.4.1",
+    "openzeppelin-solidity": "4.4.1"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-waffle": "^2.0.1",

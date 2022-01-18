@@ -9,7 +9,7 @@ module.exports = {
     ],
   },
   dependencyCompiler: {
-    paths: ["@openzeppelin/contracts-4.4.1/finance/VestingWallet.sol"],
+    paths: ["@openzeppelin/contracts/finance/VestingWallet.sol"],
     keep: false,
   },
   mocha: {

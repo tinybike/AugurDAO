@@ -53,8 +53,8 @@ contract AugurDAO is GovernorAlpha {
      * @param newGuardian The address of the new guardian, which should be the address of the guardian DAO.
      */
     function changeGuardian(address newGuardian) public {
-        require(!isGuardianChanged, "AugurDAO::changeGuardian: Guardian can only be changed once");
-        require(msg.sender == guardian, "AugurDAO::changeGuardian: Guardian can only be changed by the guardian");
+        require(!isGuardianChanged, "changeGuardian: Guardian can only be changed once");
+        require(msg.sender == guardian, "changeGuardian: Guardian can only be changed by the guardian");
         isGuardianChanged = true;
         guardian = newGuardian;
     }
@@ -66,7 +66,7 @@ contract AugurDAO is GovernorAlpha {
      * contract address associated with the ReputationToken of the correct Augur universe.
      */
     function changeGovernanceToken(address newGovernanceToken) public {
-        require(msg.sender == guardian, "AugurDAO::changeGovernanceToken: The governance token can only be changed by the guardian");
+        require(msg.sender == guardian, "changeGovernanceToken: The governance token can only be changed by the guardian");
         comp = CompInterface(newGovernanceToken);
     }
 
