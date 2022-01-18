@@ -241,9 +241,12 @@ describe("Augur DAO", () => {
     const initialRepv2Balance = await reputationTokenMockContract.balanceOf(uploader);
     assert.equal(await wrappedReputationTokenContract.balanceOf(uploader), 0);
     await reputationTokenMockContract.approve(wrappedReputationTokenContract.address, 10);
+    assert((await wrappedReputationTokenContract.totalSupply()).eq(0));
     await wrappedReputationTokenContract.depositFor(uploader, 10);
+    assert((await wrappedReputationTokenContract.totalSupply()).eq(10));
     assert.equal(await wrappedReputationTokenContract.balanceOf(uploader), 10);
     await wrappedReputationTokenContract.withdrawTo(uploader, 4);
+    assert((await wrappedReputationTokenContract.totalSupply()).eq(6));
     assert.equal(await wrappedReputationTokenContract.balanceOf(uploader), 6);
     const finalRepv2Balance = await reputationTokenMockContract.balanceOf(uploader);
     assert.equal(initialRepv2Balance.sub(finalRepv2Balance), 6);
@@ -336,8 +339,10 @@ describe("Augur DAO", () => {
     assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Queued");
     await ethers.provider.send("evm_increaseTime", [timelockDelay]);
     proposal = await augurDaoContract.proposals(proposalId);
+    assert((await nonTransferableTokenContract.totalSupply()).eq(0));
     await augurDaoContract.execute(proposalId);
     assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Executed");
+    assert((await nonTransferableTokenContract.totalSupply()).eq(governanceTokensToMint.mul(3)));
     for (let i = 1; i < 4; i++) {
       assert((await nonTransferableTokenContract.balanceOf(signers[i].address)).eq(governanceTokensToMint));
     }
@@ -418,8 +423,10 @@ describe("Augur DAO", () => {
     await augurDaoContract.queue(proposalId);
     assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Queued");
     await ethers.provider.send("evm_increaseTime", [timelockDelay]);
+    assert((await nonTransferableTokenContract.totalSupply()).eq(governanceTokensToMint.mul(3)));
     await augurDaoContract.execute(proposalId);
     assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Executed");
+    assert((await nonTransferableTokenContract.totalSupply()).eq(governanceTokensRemaining.mul(3)));
     for (let i = 1; i < 4; i++) {
       assert((await nonTransferableTokenContract.balanceOf(signers[i].address)).eq(governanceTokensRemaining));
     }

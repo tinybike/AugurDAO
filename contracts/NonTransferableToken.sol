@@ -87,7 +87,6 @@ contract NonTransferableToken is Comp {
         uint96 accountBalance = balances[account];
         require(accountBalance >= rawAmount, "NonTransferableToken::_burn: burn amount exceeds balance");
         balances[account] = sub96(accountBalance, amount, "96 bit arithmetic fail");
-        totalSupply -= rawAmount;
         totalSupply = uint256(sub96(safe96(totalSupply, "amount exceeds 96 bits"), amount, "96 bit arithmetic fail"));
         emit Transfer(account, address(0), rawAmount);
     }
