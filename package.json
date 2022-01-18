@@ -3,15 +3,17 @@
   "version": "0.0.1",
   "description": "Augur DAO",
   "scripts": {
-    "test": "hardhat test"
+    "test": "hardhat test",
+    "reinstall": "rm -f package-lock.json && rm -rf node_modules && rm -rf artifacts && rm -rf cache && npm install"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/tinybike/augurdao.git"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "4.4.2",
-    "openzeppelin-solidity": "4.4.2"
+    "@openzeppelin/contracts": "2.5.1",
+    "@openzeppelin/contracts-4.4.1": "npm:@openzeppelin/contracts@4.4.1",
+    "openzeppelin-solidity": "2.5.1"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-waffle": "^2.0.1",

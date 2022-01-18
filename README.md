@@ -23,9 +23,9 @@ Wraps an Augur Reputation Token (or another ERC20 token) so that it has the func
 
 A non-transferable ERC20 token intended for use as a governance token for AugurDAO.  The NonTransferableToken contract implements special `mint` and `burn` functions that can only be called by the `canMintAndBurn` address, which is set during initialization.  In the context of AugurDAO, `canMintAndBurn` should be the address of the AugurDAO contract.
 
-### GovernorAlpha, Timelock, SafeMath
+### GovernorAlpha, Timelock, Comp, SafeMath
 
-These are essentially unmodified Compound contracts.  The only changes are to constants on the GovernorAlpha contract.
+All files in the compound/ folder are essentially unmodified Compound contracts.  The only changes are to constants on the GovernorAlpha contract.
 
 ## Tests
 

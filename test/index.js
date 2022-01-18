@@ -1,6 +1,6 @@
 const { assert, expect } = require("chai");
 
-describe("augur dao", () => {
+describe("Augur DAO", () => {
   let signers;
   let uploader;
   let reputationTokenMockContract;
@@ -72,7 +72,7 @@ describe("augur dao", () => {
     assert.equal(await guardianDaoContract.guardian(), uploader);
     assert.equal(await guardianDaoContract.timelock(), guardianDaoTimelockContract.address);
     assert.equal(await guardianDaoContract.comp(), nonTransferableTokenContract.address);
-    let blockNumber = await ethers.provider.getBlockNumber();
+    blockNumber = await ethers.provider.getBlockNumber();
     let blockTimestamp = (await ethers.provider.getBlock(blockNumber)).timestamp;
     let eta = blockTimestamp + timelockDelay + 1;
     await guardianDaoTimelockContract.queueTransaction(
@@ -135,10 +135,10 @@ describe("augur dao", () => {
       augurDaoContract.changeGuardian(uploader)
     ).to.be.revertedWith("AugurDAO::changeGuardian: Guardian can only be changed once");
     assert.equal(await augurDaoTimelockContract.admin(), augurDaoContract.address);
-    await nonTransferableTokenContract.initialize(augurDaoContract.address);
+    await nonTransferableTokenContract.setCanMintAndBurn(augurDaoContract.address);
     await expect(
-      nonTransferableTokenContract.initialize(uploader)
-    ).to.be.revertedWith("Initializable: contract is already initialized");
+      nonTransferableTokenContract.setCanMintAndBurn(uploader)
+    ).to.be.revertedWith("NonTransferableToken::setCanMintAndBurn: canMintAndBurn address can only be set once");
     assert.equal(await nonTransferableTokenContract.canMintAndBurn(), augurDaoContract.address);
 
     // set up a mock dai contract for use with the vesting wallet
@@ -255,12 +255,22 @@ describe("augur dao", () => {
     // proposal 1: augur dao mints some governance tokens for guardian dao
 
     // delegate before the snapshot
+    let blockNumber;
+    let priorVotes;
+    let delegatee;
     for (let i = 0; i < 4; i++) {
-      assert.equal(await wrappedReputationTokenContract.delegates(signers[i].address), zeroAddress);
-      assert((await wrappedReputationTokenContract.getVotes(signers[i].address)).eq(0));
-      await wrappedReputationTokenContract.connect(signers[i]).delegate(signers[i].address);
-      assert.equal(await wrappedReputationTokenContract.delegates(signers[i].address), signers[i].address);
-      assert((await wrappedReputationTokenContract.getVotes(signers[i].address)).eq(amountOfReputationTokenToWrap));
+      delegatee = await wrappedReputationTokenContract.delegates(signers[i].address);
+      assert.equal(delegatee, zeroAddress);
+      blockNumber = await ethers.provider.getBlockNumber();
+      priorVotes = await wrappedReputationTokenContract.getPriorVotes(signers[i].address, blockNumber - 1);
+      assert(priorVotes.eq(0));
+      (await wrappedReputationTokenContract.connect(signers[i]).delegate(signers[i].address)).wait();
+      delegatee = await wrappedReputationTokenContract.delegates(signers[i].address);
+      assert.equal(delegatee, signers[i].address);
+      await ethers.provider.send("evm_mine");
+      blockNumber = await ethers.provider.getBlockNumber();
+      priorVotes = await wrappedReputationTokenContract.getPriorVotes(signers[i].address, blockNumber - 1);
+      assert(priorVotes.eq(amountOfReputationTokenToWrap));
     }
 
     // signer 0 makes a proposal to mint tokens to signers 1, 2, and 3
@@ -325,6 +335,7 @@ describe("augur dao", () => {
     await augurDaoContract.queue(proposalId);
     assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Queued");
     await ethers.provider.send("evm_increaseTime", [timelockDelay]);
+    proposal = await augurDaoContract.proposals(proposalId);
     await augurDaoContract.execute(proposalId);
     assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Executed");
     for (let i = 1; i < 4; i++) {
@@ -418,11 +429,18 @@ describe("augur dao", () => {
 
     // delegate before the snapshot
     for (let i = 1; i < 4; i++) {
-      assert.equal(await nonTransferableTokenContract.delegates(signers[i].address), zeroAddress);
-      assert((await nonTransferableTokenContract.getVotes(signers[i].address)).eq(0));
-      await nonTransferableTokenContract.connect(signers[i]).delegate(signers[i].address);
-      assert.equal(await nonTransferableTokenContract.delegates(signers[i].address), signers[i].address);
-      assert((await nonTransferableTokenContract.getVotes(signers[i].address)).eq(governanceTokensRemaining));
+      delegatee = await nonTransferableTokenContract.delegates(signers[i].address);
+      assert.equal(delegatee, zeroAddress);
+      blockNumber = await ethers.provider.getBlockNumber();
+      priorVotes = await nonTransferableTokenContract.getPriorVotes(signers[i].address, blockNumber - 1);
+      assert(priorVotes.eq(0));
+      (await nonTransferableTokenContract.connect(signers[i]).delegate(signers[i].address)).wait();
+      delegatee = await nonTransferableTokenContract.delegates(signers[i].address);
+      assert.equal(delegatee, signers[i].address);
+      await ethers.provider.send("evm_mine");
+      blockNumber = await ethers.provider.getBlockNumber();
+      priorVotes = await nonTransferableTokenContract.getPriorVotes(signers[i].address, blockNumber - 1);
+      assert(priorVotes.eq(governanceTokensRemaining));
     }    
 
     // signer 0 makes a proposal on augur dao to burn some of the guardian tokens held by signers 1, 2, and 3

@@ -1,7 +1,8 @@
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
-import "./GovernorAlpha.sol";
+import "./compound/GovernorAlpha.sol";
+import "./INonTransferableToken.sol";
 
 /**
  * @title Augur DAO
@@ -48,55 +49,50 @@ contract AugurDAO is GovernorAlpha {
     function() external payable {}
 
     /**
-     * @return uint The duration of voting on a proposal, in blocks.
+     * @return uint256 The duration of voting on a proposal, in blocks.
      */
-    function votingPeriod() public pure returns (uint) {
+    function votingPeriod() public pure returns (uint256) {
         return 23040; // ~4 days in blocks (assuming 15s blocks)
     }
 
     /**
      * @notice The guardian can assign a new guardian for the Augur DAO.  This can only be done once, and is intended
      * to be used to set the guardian to the guardian DAO.
-     * @param newGuardian_ The address of the new guardian, which should be the address of the guardian DAO.
+     * @param newGuardian The address of the new guardian, which should be the address of the guardian DAO.
      */
-    function changeGuardian(address newGuardian_) public {
+    function changeGuardian(address newGuardian) public {
         require(!isGuardianChanged, "AugurDAO::changeGuardian: Guardian can only be changed once");
         require(msg.sender == guardian, "AugurDAO::changeGuardian: Guardian can only be changed by the guardian");
         isGuardianChanged = true;
-        guardian = newGuardian_;
+        guardian = newGuardian;
     }
 
     /**
      * @notice The guardian can change the governance token (i.e., Augur Reputation Token) used by Augur DAO, for
      * example in case of an Augur universe fork.
-     * @param newGovernanceToken_ The address of the new governance token, e.g. the new WrappedReputationToken
+     * @param newGovernanceToken The address of the new governance token, e.g. the new WrappedReputationToken
      * contract address associated with the ReputationToken of the correct Augur universe.
      */
-    function changeGovernanceToken(address newGovernanceToken_) public {
+    function changeGovernanceToken(address newGovernanceToken) public {
         require(msg.sender == guardian, "AugurDAO::changeGovernanceToken: The governance token can only be changed by the guardian");
-        comp = CompInterface(newGovernanceToken_);
+        comp = CompInterface(newGovernanceToken);
     }
 
     /**
      * @notice Augur DAO can mint the guardian DAO's governance tokens.
-     * @param to_ The address that will receive the minted guardian DAO governance tokens.
-     * @param amount_ The amount of guardian DAO governance tokens to mint.
+     * @param to The address that will receive the minted guardian DAO governance tokens.
+     * @param amount The amount of guardian DAO governance tokens to mint.
      */
-    function mintGuardianGovernanceToken(address to_, uint256 amount_) public {
-        guardianGovernanceToken.mint(to_, amount_);
+    function mintGuardianGovernanceToken(address to, uint256 amount) public {
+        guardianGovernanceToken.mint(to, amount);
     }
 
     /**
      * @notice Augur DAO can burn the guardian DAO's governance tokens.
-     * @param account_ The address that will lose guardian DAO governance tokens.
-     * @param amount_ The amount of guardian DAO governance tokens to burn.
+     * @param account The address that will lose guardian DAO governance tokens.
+     * @param amount The amount of guardian DAO governance tokens to burn.
      */
-    function burnGuardianGovernanceToken(address account_, uint256 amount_) public {
-        guardianGovernanceToken.burn(account_, amount_);
+    function burnGuardianGovernanceToken(address account, uint256 amount) public {
+        guardianGovernanceToken.burn(account, amount);
     }
-}
-
-interface INonTransferableToken {
-    function mint(address to_, uint256 amount_) external;
-    function burn(address account_, uint256 amount_) external;
 }

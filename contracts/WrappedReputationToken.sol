@@ -1,39 +1,59 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.11;
-pragma abicoder v2;
+pragma solidity ^0.5.16;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20VotesComp.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Wrapper.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "./compound/Comp.sol";
 
 /**
  * @title Wrapped Reputation Token
- * @notice Wraps a Augur Reputation Token (or another ERC20 token) to have the functionality expected by AugurDAO.
+ * @notice Wraps an Augur Reputation Token (or another ERC20 token) to have the functionality expected by AugurDAO.
  */
-contract WrappedReputationToken is ERC20, ERC20Permit, ERC20VotesComp, ERC20Wrapper {
+contract WrappedReputationToken is Comp {
 
-    /**
-     * @param reputationTokenToWrap_ The address of the Reputation Token that this contract will wrap.
-     */
-    constructor(IERC20 reputationTokenToWrap_)
-        ERC20("Wrapped Reputation", "wREPv2")
-        ERC20Permit("Wrapped REPv2")
-        ERC20Wrapper(reputationTokenToWrap_)
-    {}
+    string public constant name = "Wrapped Reputation";
+    string public constant symbol = "wREPv2";
+    IERC20 public underlying;
+    uint256 public totalSupply;
 
-    // The functions below are overrides required by Solidity.
-
-    function _afterTokenTransfer(address from, address to, uint256 amount) internal override(ERC20, ERC20Votes) {
-        super._afterTokenTransfer(from, to, amount);
+    constructor(IERC20 reputationTokenToWrap_) Comp(address(0)) public {
+        underlying = reputationTokenToWrap_;
     }
 
-    function _mint(address to, uint256 amount) internal override(ERC20, ERC20Votes) {
-        super._mint(to, amount);
+    function depositFor(address account, uint256 amount) public returns (bool) {
+        SafeERC20.safeTransferFrom(underlying, msg.sender, address(this), amount);
+        _mint(account, amount);
+        return true;
     }
 
-    function _burn(address account, uint256 amount) internal override(ERC20, ERC20Votes) {
-        super._burn(account, amount);
+    function withdrawTo(address account, uint256 amount) public returns (bool) {
+        _burn(msg.sender, amount);
+        SafeERC20.safeTransfer(underlying, account, amount);
+        return true;
+    }
+
+    function _mint(address account, uint256 rawAmount) internal {
+        require(account != address(0), "WrappedReputationToken::_mint: mint to the zero address");
+        uint96 amount = safe96(rawAmount, "amount exceeds 96 bits");
+        totalSupply = uint256(add96(safe96(totalSupply, "amount exceeds 96 bits"), amount, "96 bit arithmetic fail"));
+        balances[account] = add96(balances[account], amount, "96 bit arithmetic fail");
+        emit Transfer(address(0), account, rawAmount);
+    }
+
+    function _burn(address account, uint256 rawAmount) internal {
+        require(account != address(0), "WrappedReputationToken::_burn: burn from the zero address");
+        uint96 amount = safe96(rawAmount, "amount exceeds 96 bits");
+        uint96 accountBalance = balances[account];
+        require(accountBalance >= rawAmount, "WrappedReputationToken::_burn: burn amount exceeds balance");
+        balances[account] = sub96(accountBalance, amount, "96 bit arithmetic fail");
+        totalSupply -= rawAmount;
+        totalSupply = uint256(sub96(safe96(totalSupply, "amount exceeds 96 bits"), amount, "96 bit arithmetic fail"));
+        emit Transfer(account, address(0), rawAmount);
+    }
+
+    function _recover(address account) internal returns (uint256) {
+        uint256 value = underlying.balanceOf(address(this)) - totalSupply;
+        _mint(account, value);
+        return value;
     }
 }

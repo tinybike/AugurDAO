@@ -8,14 +8,14 @@ module.exports = {
       { version: "0.8.11" },
     ],
     overrides: {
-      "contracts/GovernorAlpha.sol": { version: "0.5.16" },
-      "contracts/Timelock.sol": { version: "0.5.16" },
-      "contracts/SafeMath.sol": { version: "0.5.16" },
       "contracts/AugurDAO.sol": { version: "0.5.16" },
+      "contracts/compound/GovernorAlpha.sol": { version: "0.5.16" },
+      "contracts/compound/Timelock.sol": { version: "0.5.16" },
+      "contracts/compound/SafeMath.sol": { version: "0.5.16" },
     },
   },
   dependencyCompiler: {
-    paths: ["@openzeppelin/contracts/finance/VestingWallet.sol"],
+    paths: ["@openzeppelin/contracts-4.4.1/finance/VestingWallet.sol"],
     keep: false,
   },
   mocha: {
