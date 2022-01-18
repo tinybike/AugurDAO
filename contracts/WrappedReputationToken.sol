@@ -8,6 +8,7 @@ import "./compound/Comp.sol";
 /**
  * @title Wrapped Reputation Token
  * @notice Wraps an Augur Reputation Token (or another ERC20 token) to have the functionality expected by AugurDAO.
+ * @dev Includes logic from OpenZeppelin's ERC20 and ERC20Wrapper contracts, modified for Compound's 96-bit arithmetic.
  */
 contract WrappedReputationToken is Comp {
 
