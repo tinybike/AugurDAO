@@ -63,7 +63,7 @@ describe("Augur DAO", () => {
     const Timelock = await ethers.getContractFactory("Timelock");
     guardianDaoTimelockContract = await Timelock.deploy(uploader, timelockDelay);
     await guardianDaoTimelockContract.deployed();
-    guardianDaoContract = await (await ethers.getContractFactory("GovernorAlpha")).deploy(
+    guardianDaoContract = await (await ethers.getContractFactory("GuardianDAO")).deploy(
       guardianDaoTimelockContract.address,
       nonTransferableTokenContract.address,
       uploader
@@ -148,7 +148,7 @@ describe("Augur DAO", () => {
 
     // set up and fund a vesting wallet for gradual release of funds into augur dao
     vestingWalletContract = await (await ethers.getContractFactory("VestingWallet")).deploy(
-      augurDaoContract.address,
+      augurDaoTimelockContract.address,
       vestingStartTimestamp,
       vestingDurationSeconds
     );
@@ -171,9 +171,9 @@ describe("Augur DAO", () => {
     await reputationTokenMockContract.transfer(vestingWalletContract.address, reputationTokensToVest);
     await daiTokenMockContract.transfer(vestingWalletContract.address, daiTokensToVest);
     assert((await reputationTokenMockContract.balanceOf(vestingWalletContract.address)).eq(reputationTokensToVest));
-    assert((await reputationTokenMockContract.balanceOf(augurDaoContract.address)).eq(0));
+    assert((await reputationTokenMockContract.balanceOf(augurDaoTimelockContract.address)).eq(0));
     assert((await daiTokenMockContract.balanceOf(vestingWalletContract.address)).eq(daiTokensToVest));
-    assert((await daiTokenMockContract.balanceOf(augurDaoContract.address)).eq(0));
+    assert((await daiTokenMockContract.balanceOf(augurDaoTimelockContract.address)).eq(0));
     assert((await vestingWalletContract["released()"]()).eq(0));
     assert((await vestingWalletContract["released(address)"](reputationTokenMockContract.address)).eq(0));
     assert((await vestingWalletContract["released(address)"](daiTokenMockContract.address)).eq(0));
@@ -181,36 +181,36 @@ describe("Augur DAO", () => {
     // release funds after 1 day and check balances
     await ethers.provider.send("evm_increaseTime", [oneDayInSeconds]);
     assert((await vestingWalletContract["released()"]()).eq(0));
-    assert((await ethers.provider.getBalance(augurDaoContract.address)).eq(0));
+    assert((await ethers.provider.getBalance(augurDaoTimelockContract.address)).eq(0));
     await vestingWalletContract["release()"]();
     const etherReleasedAfter1Day = await vestingWalletContract["released()"]();
-    assert((await ethers.provider.getBalance(augurDaoContract.address)).eq(etherReleasedAfter1Day));
+    assert((await ethers.provider.getBalance(augurDaoTimelockContract.address)).eq(etherReleasedAfter1Day));
     assert((await vestingWalletContract["released(address)"](reputationTokenMockContract.address)).eq(0));
     await vestingWalletContract["release(address)"](reputationTokenMockContract.address);
     const reputationTokensReleasedAfter1Day = await vestingWalletContract["released(address)"](reputationTokenMockContract.address);
-    assert((await reputationTokenMockContract.balanceOf(augurDaoContract.address)).eq(reputationTokensReleasedAfter1Day));
+    assert((await reputationTokenMockContract.balanceOf(augurDaoTimelockContract.address)).eq(reputationTokensReleasedAfter1Day));
     assert((await vestingWalletContract["released(address)"](daiTokenMockContract.address)).eq(0));
     await vestingWalletContract["release(address)"](daiTokenMockContract.address);
     const daiTokensReleasedAfter1Day = await vestingWalletContract["released(address)"](daiTokenMockContract.address);
-    assert((await daiTokenMockContract.balanceOf(augurDaoContract.address)).eq(daiTokensReleasedAfter1Day));
+    assert((await daiTokenMockContract.balanceOf(augurDaoTimelockContract.address)).eq(daiTokensReleasedAfter1Day));
 
     // after 365 days all funds should be released
     await ethers.provider.send("evm_increaseTime", [oneDayInSeconds * 364]);
     assert((await vestingWalletContract["released()"]()).eq(etherReleasedAfter1Day));
-    assert((await ethers.provider.getBalance(augurDaoContract.address)).eq(etherReleasedAfter1Day));
+    assert((await ethers.provider.getBalance(augurDaoTimelockContract.address)).eq(etherReleasedAfter1Day));
     await vestingWalletContract["release()"]();
     const etherReleasedAfter365Days = await vestingWalletContract["released()"]();
-    assert((await ethers.provider.getBalance(augurDaoContract.address)).eq(etherReleasedAfter365Days));
+    assert((await ethers.provider.getBalance(augurDaoTimelockContract.address)).eq(etherReleasedAfter365Days));
     assert(etherReleasedAfter365Days.eq(etherToVest));
     assert((await vestingWalletContract["released(address)"](reputationTokenMockContract.address)).eq(reputationTokensReleasedAfter1Day));
     await vestingWalletContract["release(address)"](reputationTokenMockContract.address);
     const reputationTokensReleasedAfter365Days = await vestingWalletContract["released(address)"](reputationTokenMockContract.address);
     assert(reputationTokensReleasedAfter365Days.eq(reputationTokensToVest));
-    assert((await reputationTokenMockContract.balanceOf(augurDaoContract.address)).eq(reputationTokensReleasedAfter365Days));
+    assert((await reputationTokenMockContract.balanceOf(augurDaoTimelockContract.address)).eq(reputationTokensReleasedAfter365Days));
     assert((await vestingWalletContract["released(address)"](daiTokenMockContract.address)).eq(daiTokensReleasedAfter1Day));
     await vestingWalletContract["release(address)"](daiTokenMockContract.address);
     const daiTokensReleasedAfter365Days = await vestingWalletContract["released(address)"](daiTokenMockContract.address);
-    assert((await daiTokenMockContract.balanceOf(augurDaoContract.address)).eq(daiTokensReleasedAfter365Days));
+    assert((await daiTokenMockContract.balanceOf(augurDaoTimelockContract.address)).eq(daiTokensReleasedAfter365Days));
     assert(daiTokensReleasedAfter365Days.eq(daiTokensToVest));
   };
 

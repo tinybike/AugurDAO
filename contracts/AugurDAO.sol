@@ -1,8 +1,8 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
 import "./compound/GovernorAlpha.sol";
-import "./INonTransferableToken.sol";
 
 /**
  * @title Augur DAO
@@ -18,6 +18,10 @@ import "./INonTransferableToken.sol";
 contract AugurDAO is GovernorAlpha {
 
     string public constant name = "Augur DAO";
+
+    function quorumVotes() public pure returns (uint) { return 40000e18; }
+    function proposalThreshold() public pure returns (uint) { return 10000e18; }
+    function votingPeriod() public pure returns (uint) { return 100; }
 
     /**
      * @dev The governance token of the guardian DAO.
@@ -41,18 +45,6 @@ contract AugurDAO is GovernorAlpha {
         public
     {
         guardianGovernanceToken = INonTransferableToken(guardianGovernanceToken_);
-    }
-
-    /**
-     * @notice This contract can receive Ether.
-     */
-    function() external payable {}
-
-    /**
-     * @return uint256 The duration of voting on a proposal, in blocks.
-     */
-    function votingPeriod() public pure returns (uint256) {
-        return 23040; // ~4 days in blocks (assuming 15s blocks)
     }
 
     /**
@@ -95,4 +87,9 @@ contract AugurDAO is GovernorAlpha {
     function burnGuardianGovernanceToken(address account, uint256 amount) public {
         guardianGovernanceToken.burn(account, amount);
     }
+}
+
+interface INonTransferableToken {
+    function mint(address to, uint256 amount) external;
+    function burn(address account, uint256 amount) external;
 }

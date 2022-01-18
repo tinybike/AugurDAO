@@ -5,7 +5,7 @@ import "./compound/Comp.sol";
 
 /**
  * @title Non-Transferable Token
- * @notice A non-transferable ERC20 token intended for use as a governance token for AugurDAO.
+ * @notice A non-transferable ERC20 token intended for use as a governance token for AugurDAO's Guardian DAO.
  * @dev This contract implements special mint and burn functions that can only be called by the canMintAndBurn address,
  * which is set during initialization.  In the context of AugurDAO, canMintAndBurn should be the address of the
  * AugurDAO contract.  Includes logic from OpenZeppelin's ERC20 contract, modified for Compound's 96-bit arithmetic.
