@@ -17,9 +17,9 @@ contract GuardianDAO is GovernorAlpha {
 
     string public constant name = "Guardian DAO";
 
-    function quorumVotes() public pure returns (uint) { return 40000e18; }
-    function proposalThreshold() public pure returns (uint) { return 10000e18; }
-    function votingPeriod() public pure returns (uint) { return 10; }
+    function quorumVotes() public pure returns (uint) { return 40000e18; } // 40,000 NTT
+    function proposalThreshold() public pure returns (uint) { return 10000e18; } // 10,000 NTT
+    function votingPeriod() public pure returns (uint) { return 17280; } // ~3 days
 
     /**
      * @param timelock_ Address of the Timelock contract responsible for proposal queueing and execution.

@@ -14,18 +14,28 @@ describe("Augur DAO", () => {
   let vestingWalletContract;
   let ERC20Mock;
   const abi = new ethers.utils.AbiCoder();
-  const oneDayInSeconds = 86400;
-  const timelockDelay = oneDayInSeconds * 2; // 2 days
+  const secondsPerDay = 86400;
+  const timelockDelay = secondsPerDay * 2; // 2 days
   const zeroAddress = "0x0000000000000000000000000000000000000000";
   const uploaderReputationTokenBalance = ethers.utils.parseEther("10000000");
   const uploaderDaiTokenBalance = ethers.utils.parseEther("123456789");
   const initialReputationTokenBalances = ethers.utils.parseEther("40000");
   const amountOfReputationTokenToWrap = ethers.utils.parseEther("30000");
   const vestingStartTimestamp = Math.floor((new Date()).getTime() / 1000); // now
-  const vestingDurationSeconds = oneDayInSeconds * 365; // 1 year
+  const vestingDurationSeconds = secondsPerDay * 365; // 1 year
   const etherToVest = ethers.utils.parseEther("123");
   const reputationTokensToVest = ethers.utils.parseEther("456");
   const daiTokensToVest = ethers.utils.parseEther("789");
+  const proposalState = [
+    "Pending",
+    "Active",
+    "Canceled",
+    "Defeated",
+    "Succeeded",
+    "Queued",
+    "Expired",
+    "Executed",
+  ];
 
   const deployContractsAndSetupAccounts = async () => {
     signers = await ethers.getSigners();
@@ -52,13 +62,6 @@ describe("Augur DAO", () => {
     nonTransferableTokenContract = await (await ethers.getContractFactory("NonTransferableToken")).deploy();
     await nonTransferableTokenContract.deployed();
     assert.equal(await nonTransferableTokenContract.canMintAndBurn(), zeroAddress);
-
-    // Fun with timelocks!
-    // 1. deploy timelock with admin set to uploader address.
-    // 2. deploy govalpha with timelock set to timelock address and guardian set to uploader address.
-    // 3. call timelock queueTransaction(setPendingAdmin), executeTransaction(setPendingAdmin), then govalpha.__acceptAdmin() from the uploader address. timelock admin is now govalpha.
-    // 4a. for the guardian dao, call govalpha __abdicate() to set the guardian address to 0.
-    // 4b. for the augur dao, call the new function (on AugurDAO) changeGuardian(guardianDaoTimelockAddress) to set the guardian address to the guardian dao timelock's address.
 
     const Timelock = await ethers.getContractFactory("Timelock");
     guardianDaoTimelockContract = await Timelock.deploy(uploader, timelockDelay);
@@ -140,90 +143,7 @@ describe("Augur DAO", () => {
       nonTransferableTokenContract.initialize(uploader)
     ).to.be.revertedWith("Initializable: contract is already initialized");
     assert.equal(await nonTransferableTokenContract.canMintAndBurn(), augurDaoContract.address);
-
-    // set up a mock dai contract for use with the vesting wallet
-    daiTokenMockContract = await ERC20Mock.deploy("DAI", uploader, uploaderDaiTokenBalance);
-    await daiTokenMockContract.deployed();
-    assert((await daiTokenMockContract.balanceOf(uploader)).eq(uploaderDaiTokenBalance));
-
-    // set up and fund a vesting wallet for gradual release of funds into augur dao
-    vestingWalletContract = await (await ethers.getContractFactory("VestingWallet")).deploy(
-      augurDaoTimelockContract.address,
-      vestingStartTimestamp,
-      vestingDurationSeconds
-    );
-    await vestingWalletContract.deployed();
-    assert((await vestingWalletContract.start()).eq(vestingStartTimestamp));
-    assert((await vestingWalletContract.duration()).eq(vestingDurationSeconds));
-    assert((await vestingWalletContract["released()"]()).eq(0));
-    assert((await vestingWalletContract["released(address)"](reputationTokenMockContract.address)).eq(0));
-    assert((await vestingWalletContract["released(address)"](daiTokenMockContract.address)).eq(0));
-    const uploaderInitialEtherBalance = await ethers.provider.getBalance(uploader);
-    const { gasUsed, effectiveGasPrice } = (await (await signers[0].sendTransaction({
-      to: vestingWalletContract.address,
-      value: etherToVest,
-    })).wait());
-    const uploaderFinalEtherBalance = await ethers.provider.getBalance(uploader);
-    const expectedEtherBalanceChange = uploaderInitialEtherBalance.sub(uploaderFinalEtherBalance);
-    const actualEtherBalanceChange = gasUsed.mul(effectiveGasPrice).add(etherToVest);
-    assert(expectedEtherBalanceChange.eq(actualEtherBalanceChange));
-    assert((await ethers.provider.getBalance(vestingWalletContract.address)).eq(etherToVest));
-    await reputationTokenMockContract.transfer(vestingWalletContract.address, reputationTokensToVest);
-    await daiTokenMockContract.transfer(vestingWalletContract.address, daiTokensToVest);
-    assert((await reputationTokenMockContract.balanceOf(vestingWalletContract.address)).eq(reputationTokensToVest));
-    assert((await reputationTokenMockContract.balanceOf(augurDaoTimelockContract.address)).eq(0));
-    assert((await daiTokenMockContract.balanceOf(vestingWalletContract.address)).eq(daiTokensToVest));
-    assert((await daiTokenMockContract.balanceOf(augurDaoTimelockContract.address)).eq(0));
-    assert((await vestingWalletContract["released()"]()).eq(0));
-    assert((await vestingWalletContract["released(address)"](reputationTokenMockContract.address)).eq(0));
-    assert((await vestingWalletContract["released(address)"](daiTokenMockContract.address)).eq(0));
-
-    // release funds after 1 day and check balances
-    await ethers.provider.send("evm_increaseTime", [oneDayInSeconds]);
-    assert((await vestingWalletContract["released()"]()).eq(0));
-    assert((await ethers.provider.getBalance(augurDaoTimelockContract.address)).eq(0));
-    await vestingWalletContract["release()"]();
-    const etherReleasedAfter1Day = await vestingWalletContract["released()"]();
-    assert((await ethers.provider.getBalance(augurDaoTimelockContract.address)).eq(etherReleasedAfter1Day));
-    assert((await vestingWalletContract["released(address)"](reputationTokenMockContract.address)).eq(0));
-    await vestingWalletContract["release(address)"](reputationTokenMockContract.address);
-    const reputationTokensReleasedAfter1Day = await vestingWalletContract["released(address)"](reputationTokenMockContract.address);
-    assert((await reputationTokenMockContract.balanceOf(augurDaoTimelockContract.address)).eq(reputationTokensReleasedAfter1Day));
-    assert((await vestingWalletContract["released(address)"](daiTokenMockContract.address)).eq(0));
-    await vestingWalletContract["release(address)"](daiTokenMockContract.address);
-    const daiTokensReleasedAfter1Day = await vestingWalletContract["released(address)"](daiTokenMockContract.address);
-    assert((await daiTokenMockContract.balanceOf(augurDaoTimelockContract.address)).eq(daiTokensReleasedAfter1Day));
-
-    // after 365 days all funds should be released
-    await ethers.provider.send("evm_increaseTime", [oneDayInSeconds * 364]);
-    assert((await vestingWalletContract["released()"]()).eq(etherReleasedAfter1Day));
-    assert((await ethers.provider.getBalance(augurDaoTimelockContract.address)).eq(etherReleasedAfter1Day));
-    await vestingWalletContract["release()"]();
-    const etherReleasedAfter365Days = await vestingWalletContract["released()"]();
-    assert((await ethers.provider.getBalance(augurDaoTimelockContract.address)).eq(etherReleasedAfter365Days));
-    assert(etherReleasedAfter365Days.eq(etherToVest));
-    assert((await vestingWalletContract["released(address)"](reputationTokenMockContract.address)).eq(reputationTokensReleasedAfter1Day));
-    await vestingWalletContract["release(address)"](reputationTokenMockContract.address);
-    const reputationTokensReleasedAfter365Days = await vestingWalletContract["released(address)"](reputationTokenMockContract.address);
-    assert(reputationTokensReleasedAfter365Days.eq(reputationTokensToVest));
-    assert((await reputationTokenMockContract.balanceOf(augurDaoTimelockContract.address)).eq(reputationTokensReleasedAfter365Days));
-    assert((await vestingWalletContract["released(address)"](daiTokenMockContract.address)).eq(daiTokensReleasedAfter1Day));
-    await vestingWalletContract["release(address)"](daiTokenMockContract.address);
-    const daiTokensReleasedAfter365Days = await vestingWalletContract["released(address)"](daiTokenMockContract.address);
-    assert((await daiTokenMockContract.balanceOf(augurDaoTimelockContract.address)).eq(daiTokensReleasedAfter365Days));
-    assert(daiTokensReleasedAfter365Days.eq(daiTokensToVest));
   };
-
-  const proposalState = [
-    "Pending",
-    "Active",
-    "Canceled",
-    "Defeated",
-    "Succeeded",
-    "Queued",
-    "Expired",
-    "Executed",
-  ];
 
   it("wrap and unwrap some reputation tokens", async () => {
     signers = await ethers.getSigners();
@@ -608,5 +528,151 @@ describe("Augur DAO", () => {
       assert((await nonTransferableTokenContract.balanceOf(signers[i].address)).eq(governanceTokensRemaining));
     }
     assert.equal(await augurDaoContract.comp(), newGovernanceTokenAddress);
+  });
+
+  it("allow funds to vest into augur dao and do something with them", async () => {
+    await deployContractsAndSetupAccounts();
+
+    // set up a mock dai contract for use with the vesting wallet
+    daiTokenMockContract = await ERC20Mock.deploy("DAI", uploader, uploaderDaiTokenBalance);
+    await daiTokenMockContract.deployed();
+    assert((await daiTokenMockContract.balanceOf(uploader)).eq(uploaderDaiTokenBalance));
+
+    // set up and fund a vesting wallet for gradual release of funds into augur dao
+    vestingWalletContract = await (await ethers.getContractFactory("VestingWallet")).deploy(
+      augurDaoTimelockContract.address,
+      vestingStartTimestamp,
+      vestingDurationSeconds
+    );
+    await vestingWalletContract.deployed();
+    assert((await vestingWalletContract.start()).eq(vestingStartTimestamp));
+    assert((await vestingWalletContract.duration()).eq(vestingDurationSeconds));
+    assert((await vestingWalletContract["released()"]()).eq(0));
+    assert((await vestingWalletContract["released(address)"](reputationTokenMockContract.address)).eq(0));
+    assert((await vestingWalletContract["released(address)"](daiTokenMockContract.address)).eq(0));
+    const uploaderInitialEtherBalance = await ethers.provider.getBalance(uploader);
+    const { gasUsed, effectiveGasPrice } = (await (await signers[0].sendTransaction({
+      to: vestingWalletContract.address,
+      value: etherToVest,
+    })).wait());
+    const uploaderFinalEtherBalance = await ethers.provider.getBalance(uploader);
+    const expectedEtherBalanceChange = uploaderInitialEtherBalance.sub(uploaderFinalEtherBalance);
+    const actualEtherBalanceChange = gasUsed.mul(effectiveGasPrice).add(etherToVest);
+    assert(expectedEtherBalanceChange.eq(actualEtherBalanceChange));
+    assert((await ethers.provider.getBalance(vestingWalletContract.address)).eq(etherToVest));
+    await reputationTokenMockContract.transfer(vestingWalletContract.address, reputationTokensToVest);
+    await daiTokenMockContract.transfer(vestingWalletContract.address, daiTokensToVest);
+    assert((await reputationTokenMockContract.balanceOf(vestingWalletContract.address)).eq(reputationTokensToVest));
+    assert((await reputationTokenMockContract.balanceOf(augurDaoTimelockContract.address)).eq(0));
+    assert((await daiTokenMockContract.balanceOf(vestingWalletContract.address)).eq(daiTokensToVest));
+    assert((await daiTokenMockContract.balanceOf(augurDaoTimelockContract.address)).eq(0));
+    assert((await vestingWalletContract["released()"]()).eq(0));
+    assert((await vestingWalletContract["released(address)"](reputationTokenMockContract.address)).eq(0));
+    assert((await vestingWalletContract["released(address)"](daiTokenMockContract.address)).eq(0));
+
+    // release funds after 1 day and check balances
+    await ethers.provider.send("evm_increaseTime", [secondsPerDay]);
+    assert((await vestingWalletContract["released()"]()).eq(0));
+    assert((await ethers.provider.getBalance(augurDaoTimelockContract.address)).eq(0));
+    await vestingWalletContract["release()"]();
+    const etherReleasedAfter1Day = await vestingWalletContract["released()"]();
+    assert((await ethers.provider.getBalance(augurDaoTimelockContract.address)).eq(etherReleasedAfter1Day));
+    assert((await vestingWalletContract["released(address)"](reputationTokenMockContract.address)).eq(0));
+    await vestingWalletContract["release(address)"](reputationTokenMockContract.address);
+    const reputationTokensReleasedAfter1Day = await vestingWalletContract["released(address)"](reputationTokenMockContract.address);
+    assert((await reputationTokenMockContract.balanceOf(augurDaoTimelockContract.address)).eq(reputationTokensReleasedAfter1Day));
+    assert((await vestingWalletContract["released(address)"](daiTokenMockContract.address)).eq(0));
+    await vestingWalletContract["release(address)"](daiTokenMockContract.address);
+    const daiTokensReleasedAfter1Day = await vestingWalletContract["released(address)"](daiTokenMockContract.address);
+    assert((await daiTokenMockContract.balanceOf(augurDaoTimelockContract.address)).eq(daiTokensReleasedAfter1Day));
+
+    // proposal: augur dao sends some dai to signer 4 from the vesting wallet
+
+    // delegate before the snapshot
+    for (let i = 0; i < 4; i++) {
+      assert.equal(await wrappedReputationTokenContract.delegates(signers[i].address), zeroAddress);
+      assert((await wrappedReputationTokenContract.getVotes(signers[i].address)).eq(0));
+      await wrappedReputationTokenContract.connect(signers[i]).delegate(signers[i].address);
+      assert.equal(await wrappedReputationTokenContract.delegates(signers[i].address), signers[i].address);
+      assert((await wrappedReputationTokenContract.getVotes(signers[i].address)).eq(amountOfReputationTokenToWrap));
+    }
+
+    // signer 0 makes a proposal
+    const daiTokensToSend = daiTokensReleasedAfter1Day.sub(ethers.utils.parseEther("1"));
+    assert((await wrappedReputationTokenContract.balanceOf(uploader)).gt(await augurDaoContract.proposalThreshold()));
+    await augurDaoContract.propose(
+      [daiTokenMockContract.address],
+      ["0"],
+      ["transfer(address,uint256)"],
+      [abi.encode(["address", "uint256"], [signers[4].address, daiTokensToSend])],
+      "send some dai from the treasury to signer 4"
+    );
+    let proposalId = await augurDaoContract.latestProposalIds(uploader);
+    let proposal = await augurDaoContract.proposals(proposalId);
+    assert(proposal.forVotes.eq(0));
+    assert(proposal.againstVotes.eq(0));
+    assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Pending")
+    await ethers.provider.send("evm_mine");
+
+    // vote on the proposal
+    await augurDaoContract.connect(signers[1]).castVote(proposalId, true);
+    let voteReceipt = await augurDaoContract.getReceipt(proposalId, signers[1].address);
+    assert.equal(voteReceipt.hasVoted, true);
+    assert.equal(voteReceipt.support, true);
+    assert(voteReceipt.votes.eq(amountOfReputationTokenToWrap));
+    proposal = await augurDaoContract.proposals(proposalId);
+    assert(proposal.forVotes.eq(amountOfReputationTokenToWrap));
+    assert(proposal.againstVotes.eq(0));
+    assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Active");
+
+    await augurDaoContract.connect(signers[2]).castVote(proposalId, true);
+    proposal = await augurDaoContract.proposals(proposalId);
+    assert(proposal.forVotes.eq(amountOfReputationTokenToWrap.mul(2)));
+    assert(proposal.againstVotes.eq(0));
+    assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Active");
+
+    await augurDaoContract.connect(signers[3]).castVote(proposalId, true);
+    proposal = await augurDaoContract.proposals(proposalId);
+    assert(proposal.forVotes.eq(amountOfReputationTokenToWrap.mul(3)));
+    assert(proposal.againstVotes.eq(0));
+    assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Active");
+
+    // wait for the proposal to mature...
+    for (let i = 0; i < proposal.endBlock.sub(proposal.startBlock).toNumber(); i++) {
+      await ethers.provider.send("evm_mine");
+    }
+    proposal = await augurDaoContract.proposals(proposalId);
+    assert(proposal.forVotes.eq(amountOfReputationTokenToWrap.mul(3)));
+    assert(proposal.againstVotes.eq(0));
+    assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Succeeded");
+
+    // queue and execute the proposal
+    await augurDaoContract.queue(proposalId);
+    assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Queued");
+    await ethers.provider.send("evm_increaseTime", [timelockDelay]);
+    proposal = await augurDaoContract.proposals(proposalId);
+    assert((await daiTokenMockContract.balanceOf(signers[4].address)).eq(0));
+    await augurDaoContract.execute(proposalId);
+    assert.equal(proposalState[await augurDaoContract.state(proposalId)], "Executed");
+    assert((await daiTokenMockContract.balanceOf(signers[4].address)).eq(daiTokensToSend));
+
+    // after 365 days all funds should be released
+    await ethers.provider.send("evm_increaseTime", [secondsPerDay * 364]);
+    assert((await vestingWalletContract["released()"]()).eq(etherReleasedAfter1Day));
+    assert((await ethers.provider.getBalance(augurDaoTimelockContract.address)).eq(etherReleasedAfter1Day));
+    await vestingWalletContract["release()"]();
+    const etherReleasedAfter365Days = await vestingWalletContract["released()"]();
+    assert((await ethers.provider.getBalance(augurDaoTimelockContract.address)).eq(etherReleasedAfter365Days));
+    assert(etherReleasedAfter365Days.eq(etherToVest));
+    assert((await vestingWalletContract["released(address)"](reputationTokenMockContract.address)).eq(reputationTokensReleasedAfter1Day));
+    await vestingWalletContract["release(address)"](reputationTokenMockContract.address);
+    const reputationTokensReleasedAfter365Days = await vestingWalletContract["released(address)"](reputationTokenMockContract.address);
+    assert(reputationTokensReleasedAfter365Days.eq(reputationTokensToVest));
+    assert((await reputationTokenMockContract.balanceOf(augurDaoTimelockContract.address)).eq(reputationTokensReleasedAfter365Days));
+    assert((await vestingWalletContract["released(address)"](daiTokenMockContract.address)).eq(daiTokensReleasedAfter1Day));
+    await vestingWalletContract["release(address)"](daiTokenMockContract.address);
+    const daiTokensReleasedAfter365Days = await vestingWalletContract["released(address)"](daiTokenMockContract.address);
+    assert((await daiTokenMockContract.balanceOf(augurDaoTimelockContract.address)).eq(daiTokensReleasedAfter365Days.sub(daiTokensToSend)));
+    assert(daiTokensReleasedAfter365Days.eq(daiTokensToVest));
   });
 });
