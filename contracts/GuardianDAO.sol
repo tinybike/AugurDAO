@@ -19,7 +19,8 @@ contract GuardianDAO is GovernorAlpha {
 
     function quorumVotes() public pure returns (uint) { return 40000e18; } // 40,000 NTT
     function proposalThreshold() public pure returns (uint) { return 10000e18; } // 10,000 NTT
-    function votingPeriod() public pure returns (uint) { return 17280; } // ~3 days
+    // function votingPeriod() public pure returns (uint) { return 17280; } // ~3 days
+    function votingPeriod() public pure returns (uint) { return 25; } // for testing
 
     /**
      * @param timelock_ Address of the Timelock contract responsible for proposal queueing and execution.

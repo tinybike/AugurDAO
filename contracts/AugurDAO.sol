@@ -21,7 +21,8 @@ contract AugurDAO is GovernorAlpha {
 
     function quorumVotes() public pure returns (uint) { return 40000e18; } // 40,000 REP
     function proposalThreshold() public pure returns (uint) { return 10000e18; } // 10,000 REP
-    function votingPeriod() public pure returns (uint) { return 23040; } // ~4 days
+    // function votingPeriod() public pure returns (uint) { return 23040; } // ~4 days
+    function votingPeriod() public pure returns (uint) { return 100; } // for testing
 
     /**
      * @dev The governance token of the guardian DAO.

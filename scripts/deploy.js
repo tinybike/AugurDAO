@@ -10,8 +10,9 @@ async function main() {
   const isTestnet = true;
 
   // const timelockDelay = secondsPerDay * 2; // 2 days
-  const timelockDelay = 10;
-  const timelockEtaBuffer = 1;
+  const timelockDelay = 180; // 3 minutes
+  const secondsPerBlock = 15;
+  const timelockEtaBuffer = secondsPerBlock * 2; // ~2 blocks / 30 seconds after the delay expires
 
   const signers = await ethers.getSigners();
   const deployer = signers[0];
@@ -36,6 +37,8 @@ async function main() {
     wrappedReputationTokenContract = await WrappedReputationToken.deploy(reputationTokenMockContract.address);
     await wrappedReputationTokenContract.deployed();
     console.log(" -> deployed WrappedReputationToken to", wrappedReputationTokenContract.address);
+    await (await reputationTokenMockContract.approve(wrappedReputationTokenContract.address, amountOfReputationTokenToWrap)).wait();
+    await (await wrappedReputationTokenContract.depositFor(deployer.address, amountOfReputationTokenToWrap)).wait();
   }
 
   // if we're on mainnet, use the actual REPv2 contract
@@ -83,15 +86,15 @@ async function main() {
     abi.encode(["address"], [guardianDaoContract.address]),
     eta
   );
-  await (await guardianDaoTimelockContract.queueTransaction(
+  const receipt = await (await guardianDaoTimelockContract.queueTransaction(
     guardianDaoTimelockContract.address,
     0,
     "setPendingAdmin(address)",
     abi.encode(["address"], [guardianDaoContract.address]),
     eta
   )).wait();
-  console.log("Queued GuardianDAO.setPendingAdmin transaction, waiting", timelockDelay, "seconds...");
-  await sleep(timelockDelay);
+  console.log("Queued GuardianDAO.setPendingAdmin transaction, waiting", timelockDelay + timelockEtaBuffer + secondsPerBlock, "seconds...");
+  await sleep(timelockDelay + timelockEtaBuffer + secondsPerBlock);
   await (await guardianDaoTimelockContract.executeTransaction(
     guardianDaoTimelockContract.address,
     0,
@@ -119,6 +122,13 @@ async function main() {
   blockNumber = await ethers.provider.getBlockNumber();
   blockTimestamp = (await ethers.provider.getBlock(blockNumber)).timestamp;
   eta = blockTimestamp + timelockDelay + timelockEtaBuffer;
+  console.log("queue transaction:",
+    augurDaoTimelockContract.address,
+    0,
+    "setPendingAdmin(address)",
+    abi.encode(["address"], [augurDaoContract.address]),
+    eta
+  );
   await (await augurDaoTimelockContract.queueTransaction(
     augurDaoTimelockContract.address,
     0,
@@ -126,8 +136,8 @@ async function main() {
     abi.encode(["address"], [augurDaoContract.address]),
     eta
   )).wait();
-  console.log("Queued AugurDAO.setPendingAdmin transaction, waiting", timelockDelay, "seconds...");
-  await sleep(timelockDelay);
+  console.log("Queued AugurDAO.setPendingAdmin transaction, waiting", timelockDelay + timelockEtaBuffer + secondsPerBlock, "seconds...");
+  await sleep(timelockDelay + timelockEtaBuffer + secondsPerBlock);
   await (await augurDaoTimelockContract.executeTransaction(
     augurDaoTimelockContract.address,
     0,
