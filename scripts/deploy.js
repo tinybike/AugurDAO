@@ -7,6 +7,7 @@ function sleep(seconds) {
 }
 
 async function main() {
+  let blockNumber;
   const isTestnet = true;
 
   // const timelockDelay = secondsPerDay * 2; // 2 days
@@ -31,29 +32,31 @@ async function main() {
     const ERC20Mock = await ethers.getContractFactory("ERC20Mock");
     console.log(`ERC20Mock()`);
     const reputationTokenMockContract = await ERC20Mock.deploy("REP", deployer.address, deployerReputationTokenBalance);
-    await reputationTokenMockContract.deployed();
-    console.log(" -> deployed ERC20Mock to", reputationTokenMockContract.address);
+    blockNumber = (await reputationTokenMockContract.deployTransaction.wait()).blockNumber;
+    console.log(" -> deployed ERC20Mock to", reputationTokenMockContract.address, "in block", blockNumber);
     console.log(`WrappedReputationToken(${reputationTokenMockContract.address})`);
     wrappedReputationTokenContract = await WrappedReputationToken.deploy(reputationTokenMockContract.address);
-    await wrappedReputationTokenContract.deployed();
-    console.log(" -> deployed WrappedReputationToken to", wrappedReputationTokenContract.address);
+    blockNumber = (await wrappedReputationTokenContract.deployTransaction.wait()).blockNumber;
+    console.log(" -> deployed WrappedReputationToken to", wrappedReputationTokenContract.address, "in block", blockNumber);
     await (await reputationTokenMockContract.approve(wrappedReputationTokenContract.address, amountOfReputationTokenToWrap)).wait();
     await (await wrappedReputationTokenContract.depositFor(deployer.address, amountOfReputationTokenToWrap)).wait();
+    await (await wrappedReputationTokenContract.delegate(deployer.address)).wait();
+    console.log("votes: ", await wrappedReputationTokenContract.getCurrentVotes(deployer.address));
   }
 
   // if we're on mainnet, use the actual REPv2 contract
   else {
     console.log(`Deploying WrappedReputationToken(${mainnetRepv2ContractAddress})...`);
     wrappedReputationTokenContract = await WrappedReputationToken.deploy(mainnetRepv2ContractAddress);
-    await wrappedReputationTokenContract.deployed();
-    console.log(" -> deployed WrappedReputationToken to", wrappedReputationTokenContract.address);
+    blockNumber = (await wrappedReputationTokenContract.deployTransaction.wait()).blockNumber;
+    console.log(" -> deployed WrappedReputationToken to", wrappedReputationTokenContract.address, "in block", blockNumber);
   }
 
   const NonTransferableToken = await ethers.getContractFactory("NonTransferableToken");
   console.log(`NonTransferableToken()`);
   const nonTransferableTokenContract = await NonTransferableToken.deploy();
-  await nonTransferableTokenContract.deployed();
-  console.log(" -> deployed NonTransferableToken to", nonTransferableTokenContract.address);
+  blockNumber = (await nonTransferableTokenContract.deployTransaction.wait()).blockNumber;
+  console.log(" -> deployed NonTransferableToken to", nonTransferableTokenContract.address, "in block", blockNumber);
 
   // Deploy Timelocks and DAO contracts.  This is a little complicated:
   // 1. Deploy timelock with admin set to uploader address.
@@ -65,8 +68,8 @@ async function main() {
   const Timelock = await ethers.getContractFactory("Timelock");
   console.log(`Timelock(${deployer.address}, ${timelockDelay})`);
   const guardianDaoTimelockContract = await Timelock.deploy(deployer.address, timelockDelay);
-  await guardianDaoTimelockContract.deployed();
-  console.log(" -> deployed Timelock (GuardianDAO) to", guardianDaoTimelockContract.address);
+  blockNumber = (await guardianDaoTimelockContract.deployTransaction.wait()).blockNumber;
+  console.log(" -> deployed Timelock (GuardianDAO) to", guardianDaoTimelockContract.address, "in block", blockNumber);
   const GuardianDAO = await ethers.getContractFactory("GuardianDAO");
   console.log(`GuardianDAO(${guardianDaoTimelockContract.address}, ${nonTransferableTokenContract.address}, ${deployer.address})`);
   const guardianDaoContract = await GuardianDAO.deploy(
@@ -74,18 +77,11 @@ async function main() {
     nonTransferableTokenContract.address,
     deployer.address
   );
-  await guardianDaoContract.deployed();
-  console.log(" -> deployed GuardianDAO to", guardianDaoContract.address);
-  let blockNumber = await ethers.provider.getBlockNumber();
+  blockNumber = (await guardianDaoContract.deployTransaction.wait()).blockNumber;
+  console.log(" -> deployed GuardianDAO to", guardianDaoContract.address, "in block", blockNumber);
+  blockNumber = await ethers.provider.getBlockNumber();
   let blockTimestamp = (await ethers.provider.getBlock(blockNumber)).timestamp;
   let eta = blockTimestamp + timelockDelay + timelockEtaBuffer;
-  console.log("queue transaction:",
-    guardianDaoTimelockContract.address,
-    0,
-    "setPendingAdmin(address)",
-    abi.encode(["address"], [guardianDaoContract.address]),
-    eta
-  );
   const receipt = await (await guardianDaoTimelockContract.queueTransaction(
     guardianDaoTimelockContract.address,
     0,
@@ -107,8 +103,8 @@ async function main() {
 
   console.log(`Timelock(${deployer.address}, ${timelockDelay})`);
   const augurDaoTimelockContract = await Timelock.deploy(deployer.address, timelockDelay);
-  await augurDaoTimelockContract.deployed();
-  console.log(" -> deployed Timelock (AugurDAO) to", augurDaoTimelockContract.address);
+  blockNumber = (await augurDaoTimelockContract.deployTransaction.wait()).blockNumber;
+  console.log(" -> deployed Timelock (AugurDAO) to", augurDaoTimelockContract.address, "in block", blockNumber);
   const AugurDAO = await ethers.getContractFactory("AugurDAO");
   console.log(`AugurDAO(${augurDaoTimelockContract.address}, ${wrappedReputationTokenContract.address}, ${deployer.address}, ${nonTransferableTokenContract.address})`);
   const augurDaoContract = await AugurDAO.deploy(
@@ -117,18 +113,11 @@ async function main() {
     deployer.address,
     nonTransferableTokenContract.address
   );
-  await augurDaoContract.deployed();
-  console.log(" -> deployed AugurDAO to", augurDaoContract.address);
+  blockNumber = (await augurDaoContract.deployTransaction.wait()).blockNumber;
+  console.log(" -> deployed AugurDAO to", augurDaoContract.address, "in block", blockNumber);
   blockNumber = await ethers.provider.getBlockNumber();
   blockTimestamp = (await ethers.provider.getBlock(blockNumber)).timestamp;
   eta = blockTimestamp + timelockDelay + timelockEtaBuffer;
-  console.log("queue transaction:",
-    augurDaoTimelockContract.address,
-    0,
-    "setPendingAdmin(address)",
-    abi.encode(["address"], [augurDaoContract.address]),
-    eta
-  );
   await (await augurDaoTimelockContract.queueTransaction(
     augurDaoTimelockContract.address,
     0,
@@ -158,8 +147,8 @@ async function main() {
     vestingStartTimestamp,
     vestingDurationSeconds
   );
-  await vestingWalletContract.deployed();
-  console.log(" -> deployed VestingWallet to", guardianDaoTimelockContract.address);
+  blockNumber = (await vestingWalletContract.deployTransaction.wait()).blockNumber;
+  console.log(" -> deployed VestingWallet to", vestingWalletContract.address, "in block", blockNumber);
 
   console.log("Deployment complete.");
   console.log("Account balance:", ethers.utils.formatEther(await deployer.getBalance()));
