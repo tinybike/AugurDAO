@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20VotesComp.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Wrapper.sol";
+import "./augur/IV2ReputationToken.sol";
+import "./augur/IUniverse.sol";
 
 /**
  * @title Wrapped Reputation Token
@@ -21,6 +23,15 @@ contract WrappedReputationToken is ERC20, ERC20Permit, ERC20VotesComp, ERC20Wrap
         ERC20Permit("Wrapped REPv2")
         ERC20Wrapper(reputationTokenToWrap_)
     {}
+
+    function migrate(uint256[] memory payoutNumerators, uint256 attotokens) public {
+        IV2ReputationToken reputationToken = IV2ReputationToken(address(underlying));
+        IUniverse universe = reputationToken.getUniverse();
+        IUniverse destinationUniverse = universe.createChildUniverse(payoutNumerators);
+        IV2ReputationToken destinationReputationToken = destinationUniverse.getReputationToken();
+        reputationToken.migrateOutByPayout(payoutNumerators, attotokens);
+        destinationReputationToken.transfer(msg.sender, attotokens);
+    }
 
     // The functions below are overrides required by Solidity.
 
