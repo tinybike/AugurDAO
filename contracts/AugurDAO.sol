@@ -54,13 +54,4 @@ contract AugurDAO is GovernorAlpha {
     function votingPeriod() public view returns (uint256) {
         return _votingPeriod;
     }
-
-    /**
-     * @param newGovernanceToken The address of the new governance token, e.g. the new WrappedReputationToken
-     * contract address associated with the ReputationToken of the correct Augur universe.
-     */
-    function changeGovernanceToken(address newGovernanceToken) public {
-        require(msg.sender == address(timelock), "changeGovernanceToken: can only be called by timelock");
-        token = CompInterface(newGovernanceToken);
-    }
 }
