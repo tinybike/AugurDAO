@@ -4,7 +4,7 @@ AugurDAO is intended to receive funds gradually over time, using a mechanism suc
 
 ### WrappedReputationToken
 
-Wraps an Augur Reputation Token (or another ERC20 token) so that it has the functionality expected by AugurDAO.
+Wraps an Augur Reputation Token so that it has the functionality expected by AugurDAO.
 
 ## Tests
 

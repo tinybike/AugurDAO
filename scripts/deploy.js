@@ -54,7 +54,7 @@ async function main() {
     await (await reputationTokenMockContract.approve(wrappedReputationTokenContract.address, amountOfReputationTokenToWrap)).wait();
     await (await wrappedReputationTokenContract.depositFor(deployer.address, amountOfReputationTokenToWrap)).wait();
     await (await wrappedReputationTokenContract.delegate(deployer.address)).wait();
-    console.log("votes: ", await wrappedReputationTokenContract.getCurrentVotes(deployer.address));
+    // console.log("votes: ", await wrappedReputationTokenContract.getCurrentVotes(deployer.address));
   }
 
   // if we're on mainnet, use the actual REPv2 contract

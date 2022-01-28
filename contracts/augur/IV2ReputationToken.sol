@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.2;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IUniverse.sol";
 
 interface IV2ReputationToken {
@@ -19,6 +20,7 @@ interface IV2ReputationToken {
     function getUniverse() external view returns (IUniverse);
     function getTotalMigrated() external view returns (uint256);
     function getTotalTheoreticalSupply() external view returns (uint256);
+    function getLegacyRepToken() external view returns (IERC20);
     function mintForReportingParticipant(uint256 _amountMigrated) external returns (bool);
     function parentUniverse() external returns (IUniverse);
     function burnForMarket(uint256 _amountToBurn) external returns (bool);
