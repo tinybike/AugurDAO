@@ -3,22 +3,22 @@ pragma experimental ABIEncoderV2;
 
 contract GovernorAlpha {
     /// @notice The name of this contract
-    string public constant name = "Compound Governor Alpha";
+    string public constant name = "Governor Alpha";
 
     /// @notice The number of votes in support of a proposal required in order for a quorum to be reached and for a vote to succeed
-    function quorumVotes() public view returns (uint) { return 400000e18; } // 400,000 = 4% of Comp
+    uint256 private _quorumVotes;
 
     /// @notice The number of votes required in order for a voter to become a proposer
-    function proposalThreshold() public view returns (uint) { return 100000e18; } // 100,000 = 1% of Comp
+    uint256 private _proposalThreshold;
 
     /// @notice The maximum number of actions that can be included in a proposal
-    function proposalMaxOperations() public view returns (uint) { return 10; } // 10 actions
+    uint256 private _proposalMaxOperations;
 
     /// @notice The delay before voting on a proposal may take place, once proposed
-    function votingDelay() public view returns (uint) { return 1; } // 1 block
+    uint256 private _votingDelay;
 
     /// @notice The duration of voting on a proposal, in blocks
-    function votingPeriod() public view returns (uint) { return 17280; } // ~3 days in blocks (assuming 15s blocks)
+    uint256 private _votingPeriod;
 
     /// @notice The address of the Compound Protocol Timelock
     TimelockInterface public timelock;
@@ -127,10 +127,44 @@ contract GovernorAlpha {
     /// @notice An event emitted when a proposal has been executed in the Timelock
     event ProposalExecuted(uint id);
 
-    constructor(address timelock_, address token_, address guardian_) public {
+    constructor(
+        address timelock_,
+        address token_,
+        address guardian_,
+        uint256 quorumVotes_,
+        uint256 proposalThreshold_,
+        uint256 proposalMaxOperations_,
+        uint256 votingDelay_,
+        uint256 votingPeriod_
+    ) public {
         timelock = TimelockInterface(timelock_);
         token = CompInterface(token_);
         guardian = guardian_;
+        _quorumVotes = quorumVotes_;
+        _proposalThreshold = proposalThreshold_;
+        _proposalMaxOperations = proposalMaxOperations_;
+        _votingDelay = votingDelay_;
+        _votingPeriod = votingPeriod_;
+    }
+
+    function quorumVotes() public view returns (uint256) {
+        return _quorumVotes;
+    }
+
+    function proposalThreshold() public view returns (uint256) {
+        return _proposalThreshold;
+    }
+
+    function proposalMaxOperations() public view returns (uint256) {
+        return _proposalMaxOperations;
+    }
+
+    function votingDelay() public view returns (uint256) {
+        return _votingDelay;
+    }
+
+    function votingPeriod() public view returns (uint256) {
+        return _votingPeriod;
     }
 
     function propose(address[] memory targets, uint[] memory values, string[] memory signatures, bytes[] memory calldatas, string memory description) public returns (uint) {

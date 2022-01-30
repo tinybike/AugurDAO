@@ -6,16 +6,12 @@ import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20VotesComp.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Wrapper.sol";
-import "./augur/IV2ReputationToken.sol";
-import "./augur/IUniverse.sol";
 
 /**
  * @title Wrapped Reputation Token
  * @notice Wraps a Augur Reputation Token (or another ERC20 token) to have the functionality expected by AugurDAO.
  */
 contract WrappedReputationToken is ERC20, ERC20Permit, ERC20VotesComp, ERC20Wrapper {
-
-    IV2ReputationToken public reputationToken;
 
     /**
      * @param reputationTokenToWrap_ The address of the Reputation Token that this contract will wrap.
@@ -24,69 +20,7 @@ contract WrappedReputationToken is ERC20, ERC20Permit, ERC20VotesComp, ERC20Wrap
         ERC20("Wrapped Reputation", "WREP")
         ERC20Permit("Wrapped Reputation")
         ERC20Wrapper(reputationTokenToWrap_)
-    {
-        reputationToken = IV2ReputationToken(address(reputationTokenToWrap_));
-    }
-
-    function migrate(uint256[] memory payoutNumerators, uint256 attotokens) public {
-        IUniverse universe = reputationToken.getUniverse();
-        IUniverse destinationUniverse = universe.createChildUniverse(payoutNumerators);
-        IV2ReputationToken destinationReputationToken = destinationUniverse.getReputationToken();
-        reputationToken.migrateOutByPayout(payoutNumerators, attotokens);
-        destinationReputationToken.transfer(msg.sender, attotokens);
-    }
-
-    function migrateOutByPayout(uint256[] memory _payoutNumerators, uint256 _attotokens) public returns (bool) {
-        return reputationToken.migrateOutByPayout(_payoutNumerators, _attotokens);
-    }
-
-    function migrateIn(address _reporter, uint256 _attotokens) public returns (bool) {
-        return reputationToken.migrateIn(_reporter, _attotokens);
-    }
-
-    function mintForReportingParticipant(uint256 _amountMigrated) public returns (bool) {
-        return reputationToken.mintForReportingParticipant(_amountMigrated);
-    }
-
-    function mintForWarpSync(uint256 _amountToMint, address _target) public returns (bool) {
-        return reputationToken.mintForWarpSync(_amountToMint, _target);
-    }
-
-    function burnForMarket(uint256 _amountToBurn) public returns (bool) {
-        return reputationToken.burnForMarket(_amountToBurn);
-    }
-
-    function trustedUniverseTransfer(address _source, address _destination, uint256 _attotokens) public returns (bool) {
-        return reputationToken.trustedUniverseTransfer(_source, _destination, _attotokens);
-    }
-
-    function trustedMarketTransfer(address _source, address _destination, uint256 _attotokens) public returns (bool) {
-        return reputationToken.trustedMarketTransfer(_source, _destination, _attotokens);
-    }
-
-    function trustedReportingParticipantTransfer(address _source, address _destination, uint256 _attotokens) public returns (bool) {
-        return reputationToken.trustedReportingParticipantTransfer(_source, _destination, _attotokens);
-    }
-
-    function trustedDisputeWindowTransfer(address _source, address _destination, uint256 _attotokens) public returns (bool) {
-        return reputationToken.trustedDisputeWindowTransfer(_source, _destination, _attotokens);
-    }
-
-    function getUniverse() public view returns (IUniverse) {
-        return reputationToken.getUniverse();
-    }
-
-    function getTotalMigrated() public view returns (uint256) {
-        return reputationToken.getTotalMigrated();
-    }
-
-    function getLegacyRepToken() public view returns (IERC20) {
-        return reputationToken.getLegacyRepToken();
-    }
-
-    function getTotalTheoreticalSupply() public view returns (uint256) {
-        return reputationToken.getTotalTheoreticalSupply();
-    }
+    {}
 
     // The functions below are overrides required by Solidity.
 

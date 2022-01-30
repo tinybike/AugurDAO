@@ -35,6 +35,7 @@ module.exports = {
       accounts: [GOERLI_PRIVATE_KEY],
     },
     mainnet: {
+      // url: `https://mainnet.infura.io/v3/${INFURA_API_KEY}`,
       url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY}`,
       accounts: [MAINNET_PRIVATE_KEY],
     },
